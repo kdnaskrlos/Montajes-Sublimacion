@@ -504,12 +504,13 @@ tbody tr:hover td{background:var(--surface-2)}
     <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
     <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="currentColor"/></svg>
   </button>
-  <span class="ver" title="Versión del programa">v1.28.3</span>
+  <span class="ver" title="Versión del programa">v1.28.4</span>
 </nav>
 
 <div class="shell">
   <div class="topbar">
-    <span class="pill st" id="save"><i></i><span>Cargando…</span></span>
+    <span class="pill st" id="save" role="status"><i></i><span>Cargando…</span></span>
+    <button class="btn sm" id="reintentarGuardar" type="button" hidden>Reintentar guardado</button>
     <button class="pill lotepill" id="lotePill" type="button" hidden></button>
     <span class="pill fecha" id="fecha"></span>
     <span class="sp"></span>
@@ -621,7 +622,7 @@ function chip(k,c,sm){return `<span class="chip${sm?" sm":""}" style="--c:var(${
 
 /* ---------- estado ---------- */
 let S={clientes:[],ajustes:normAj(),rev:""};
-let LOTES=[];let renLote=null;
+let LOTES=[];let renLote=null, nombreLotePendiente="", renombrandoLote=false;
 let sel=null, soloUsadas=false, loaded=false, confirmDel=false, prodSel=null, loteAbierto=null, loteConfirm=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -686,20 +687,52 @@ function firma(cl,t){return JSON.stringify(cl.q[t]||{})+"|"+cl.modoManga+"|"+cl.
 function nivel(a){return a.some(x=>x.lv==="err")?"err":a.length?"warn":"ok"}
 
 /* ---------- guardado ---------- */
-let db=null, ref=null, saveTimer=null, saving=false, lastRev="", dirty=false;
+let db=null, ref=null, saveTimer=null, saving=false, escrituraPedido=null, lastRev="", dirty=false, versionPedido=0;
+let errorPedido="", errorLotes=false, lecturaPedidoFallida=false, lecturaLotesFallida=false;
+const cambiosLotes=new Map();
 function setSave(cls,txt){const el=$("save");el.className="pill st "+cls;el.querySelector("span").textContent=txt}
+function pintarGuardado(){
+  $("reintentarGuardar").hidden=!(dirty&&errorPedido||cambiosLotes.size&&errorLotes);
+  if(errorPedido)setSave("bad",errorPedido);
+  else if(errorLotes)setSave("bad","No se pudo guardar el historial");
+  else if(lecturaLotesFallida)setSave("bad","No se pudo leer el historial guardado");
+  else if(dirty||cambiosLotes.size)setSave("busy","Guardando…");
+  else if(loaded)setSave("ok",ref?"Pedidos guardados":"Pedidos guardados en este navegador");
+}
+function hayCambiosPendientes(){
+  return dirty||cambiosLotes.size>0||creandoLote||lotePorReintentar||renombrandoLote||
+    LOTES.some(l=>l.id===renLote&&l.nombre!==nombreLotePendiente.trim());
+}
+function vigilarSalida(){
+  if(hayCambiosPendientes())window.addEventListener("beforeunload",antesDeSalir);
+  else window.removeEventListener("beforeunload",antesDeSalir);
+}
+function guardarPendientes(){guardar();guardarCambiosLotes()}
+function antesDeSalir(e){
+  guardarPendientes();
+  if(hayCambiosPendientes()){e.preventDefault();e.returnValue=true}
+}
+$("reintentarGuardar").addEventListener("click",guardarPendientes);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")guardarPendientes()});
+window.addEventListener("pagehide",guardarPendientes);
 /* historial de deshacer / rehacer */
 const UNDO=[],REDO=[];let base=null,grupo=false,grupoT=null;
 const foto=()=>JSON.stringify({clientes:S.clientes,ajustes:S.ajustes,loteActivo:S.loteActivo||null});
 function cerrarGrupo(){if(grupo){grupo=false;clearTimeout(grupoT);base=foto()}}
-function changed(agrupar){
+function registrarCambio(agrupar){
   if(base!==null){
     if(!grupo){UNDO.push(base);if(UNDO.length>100)UNDO.shift();REDO.length=0}
     if(agrupar){grupo=true;clearTimeout(grupoT);grupoT=setTimeout(cerrarGrupo,900)}else{grupo=false;clearTimeout(grupoT);base=foto()}
   }
+}
+function changed(agrupar){
+  registrarCambio(agrupar);
   persistir();pintarHist();
 }
-function persistir(){programarLote();dirty=true;setSave("busy","Guardando…");clearTimeout(saveTimer);saveTimer=setTimeout(guardar,700)}
+function persistir(){
+  dirty=true;versionPedido++;programarLote();pintarGuardado();vigilarSalida();
+  clearTimeout(saveTimer);saveTimer=setTimeout(guardar,700);
+}
 function aplicar(json){const d=JSON.parse(json);S.clientes=(d.clientes||[]).map(normCli);S.ajustes=normAj(d.ajustes);S.loteActivo=d.loteActivo||null;
   if(!S.clientes.find(c=>c.id===sel))sel=S.clientes[0]&&S.clientes[0].id;confirmDel=false;prodSel=null;
   const foco=document.activeElement&&document.activeElement.id;renderTodo();base=foto();persistir();pintarHist();if(admK&&!$("modal").hidden)pintarAdm();
@@ -707,36 +740,71 @@ function aplicar(json){const d=JSON.parse(json);S.clientes=(d.clientes||[]).map(
 function deshacer(){cerrarGrupo();if(!UNDO.length){toast("No hay nada que deshacer.");return}REDO.push(foto());aplicar(UNDO.pop());toast("Acción deshecha.")}
 function rehacer(){cerrarGrupo();if(!REDO.length){toast("No hay nada que rehacer.");return}UNDO.push(foto());aplicar(REDO.pop());toast("Acción rehecha.")}
 function pintarHist(){const u=$("btnUndo"),r=$("btnRedo");if(u)u.disabled=!(UNDO.length||grupo);if(r)r.disabled=!REDO.length}
-async function guardar(){
-  if(saving){saveTimer=setTimeout(guardar,400);return}
-  saving=true;S.rev=uid();lastRev=S.rev;const copy=JSON.parse(JSON.stringify(S));
+async function guardar(versionParaVaciar=null){
+  const vaciar=versionParaVaciar!==null;
+  if(vaciar&&escrituraPedido){try{await escrituraPedido}catch(e){/* El vaciado se comprueba con su propia escritura. */}}
+  if(saving||!loaded||(!vaciar&&!dirty)||(vaciar&&versionParaVaciar!==versionPedido))return false;
+  clearTimeout(saveTimer);saving=true;
+  const version=versionPedido, rev=uid();
+  let vaciado=false;
   try{
-    if(ref){await ref.set(copy);setSave("ok","Guardado")}
-    else{try{localStorage.setItem("montajes-sub",JSON.stringify(copy));setSave("ok","Guardado en este navegador")}catch(e){setSave("bad","No se pudo guardar")}}
-    dirty=false;
-  }catch(e){setSave("bad",e&&e.code==="invalid_argument"?"Solo lectura":"Sin guardar: revisa tu conexión")}
-  finally{saving=false}
+    const pedido=vaciar?{...S,clientes:[],loteActivo:null}:S;
+    const copy=JSON.parse(JSON.stringify({...pedido,rev}));
+    if(ref){escrituraPedido=ref.set(copy);await escrituraPedido}
+    else{
+      if(lecturaPedidoFallida)throw new Error("Lectura inicial de pedidos fallida");
+      localStorage.setItem("montajes-sub",JSON.stringify(copy));
+    }
+    lastRev=S.rev=rev;
+    errorPedido="";
+    if(version!==versionPedido)return false;
+    if(vaciar){
+      cerrarGrupo();S=pedido;S.rev=rev;sel=null;prodSel=null;
+      registrarCambio();vaciado=true;
+    }
+    dirty=false;return true;
+  }catch(e){
+    errorPedido=lecturaPedidoFallida?"No se pudieron leer ni guardar los pedidos":
+      e&&e.code==="invalid_argument"?"Pedidos sin guardar · Solo lectura":"No se pudieron guardar los pedidos";
+    return false;
+  }finally{
+    escrituraPedido=null;saving=false;pintarGuardado();vigilarSalida();
+    if(vaciado){renderTodo();pintarHist()}
+    if(version!==versionPedido){clearTimeout(saveTimer);saveTimer=setTimeout(guardar,0)}
+  }
 }
 async function iniciar(){
+  const principal=document.querySelector("main");
+  principal.inert=true;
   try{db=await (window.claude&&window.claude.use?window.claude.use("db"):null)}catch(e){db=null}
   if(db){
     ref=db.doc("taller/pedido");
     ref.onSnapshot(snap=>{
+      if(snap.metadata?.hasPendingWrites)return;
       const d=snap.exists?snap.data():null;
       if(d&&d.rev&&d.rev===lastRev){loaded=true;return}
       if(dirty||saving)return;
       S=norm(d?JSON.parse(JSON.stringify(d)):null);loaded=true;
       if(!sel||!S.clientes.find(c=>c.id===sel))sel=S.clientes[0]&&S.clientes[0].id;
-      setSave("ok","Guardado");renderTodo();base=foto();grupo=false;pintarHist();
-    },()=>setSave("bad","Sin conexión: recarga la página"));
+      errorPedido="";pintarGuardado();renderTodo();base=foto();grupo=false;pintarHist();principal.inert=false;
+    },()=>{errorPedido=dirty?"Pedidos sin guardar · Sin conexión":"No se pudieron leer los pedidos";pintarGuardado()});
     db.collection("lotes").onSnapshot(snap=>{
+      if(snap.metadata?.hasPendingWrites)return;
       LOTES=snap.docs.map(d=>Object.assign({id:d.id},JSON.parse(JSON.stringify(d.data()||{}))));
-      renderHistorial();pintarLote();
-    },()=>{});
+      lecturaLotesFallida=false;renderHistorial();pintarLote();pintarGuardado();
+    },()=>{lecturaLotesFallida=true;pintarGuardado()});
   }else{
-    let d=null;try{d=JSON.parse(localStorage.getItem("montajes-sub")||"null")}catch(e){}
-    try{LOTES=JSON.parse(localStorage.getItem("montajes-lotes")||"[]")}catch(e){LOTES=[]}
-    S=norm(d);loaded=true;sel=S.clientes[0]&&S.clientes[0].id;setSave("ok","Guardado en este navegador");renderTodo();base=foto();pintarHist();
+    let d=null;
+    try{d=JSON.parse(localStorage.getItem("montajes-sub")||"null")}
+    catch(e){lecturaPedidoFallida=true;errorPedido="No se pudieron leer los pedidos guardados"}
+    try{
+      const lotes=JSON.parse(localStorage.getItem("montajes-lotes")||"[]");
+      if(!Array.isArray(lotes))throw new Error("Historial inválido");
+      LOTES=lotes;
+    }catch(e){lecturaLotesFallida=true}
+    S=norm(d);
+    loaded=true;sel=S.clientes[0]&&S.clientes[0].id;pintarGuardado();renderTodo();base=foto();pintarHist();
+    principal.inert=false;
   }
 }
 
@@ -1052,21 +1120,86 @@ async function imprimirHoja(btn){
 }
 
 /* ---------- lote en curso: cada cambio se guarda solo en su lote del historial ---------- */
-let loteTimer=null;
-function programarLote(){if(!S.loteActivo)return;clearTimeout(loteTimer);loteTimer=setTimeout(autoGuardarLote,1200)}
-async function autoGuardarLote(){const id=S.loteActivo;if(!id)return;const l=LOTES.find(x=>x.id===id);
-  if(!l){if(loaded&&LOTES.length){S.loteActivo=null;pintarLote()}return}
-  const con=S.clientes.filter(c=>sumCliente(c).total>0);if(!con.length)return; /* no se vacía un lote por accidente */
+let loteTimer=null, guardandoCambiosLotes=false, versionCambiosLotes=0, creandoLote=false, lotePorReintentar=false;
+const escriturasLote=new Map();
+function datosLote(){
+  const con=S.clientes.filter(c=>sumCliente(c).total>0);
+  if(!con.length)return null;
   const t=totales(con);
-  const doc=Object.assign({},l,{portadaCli:S.portadaCli||null,ajustes:JSON.parse(JSON.stringify(S.ajustes)),clientes:JSON.parse(JSON.stringify(con)),editado:Date.now(),
-    resumen:{clientes:con.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total}});
-  delete doc.id;
-  try{if(db)await db.collection("lotes").doc(id).set(doc);else{Object.assign(l,doc);guardarLotesLocal()}
-    Object.assign(l,doc);renderHistorial();pintarLote(true)}catch(e){pintarLote(false,true)}}
-function pintarLote(recien,error){const b=$("lotePill");if(!b)return;const l=S.loteActivo&&LOTES.find(x=>x.id===S.loteActivo);
+  return {portadaCli:S.portadaCli||null,ajustes:JSON.parse(JSON.stringify(S.ajustes)),clientes:JSON.parse(JSON.stringify(con)),
+    resumen:{clientes:con.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total}};
+}
+function programarLote(){
+  const id=S.loteActivo;
+  if(!id||!LOTES.some(l=>l.id===id))return;
+  const doc=datosLote();
+  if(!doc){
+    /* Quitar todas las prendas de Pedidos no borra el lote guardado. */
+    const cambios=cambiosLotes.get(id);
+    if(cambios&&cambios.delete("pedido")&&!cambios.size)cambiosLotes.delete(id);
+    if(!cambiosLotes.size){errorLotes=false;pintarLote()}
+    return;
+  }
+  doc.editado=Date.now();
+  marcarCambioLote(id,"pedido",l=>Object.assign(l,JSON.parse(JSON.stringify(doc))));
+}
+function marcarCambioLote(id,clave,aplicar){
+  if(!cambiosLotes.has(id))cambiosLotes.set(id,new Map());
+  const cambios=cambiosLotes.get(id);
+  cambios.delete(clave);cambios.set(clave,aplicar);
+  versionCambiosLotes++;
+  clearTimeout(loteTimer);loteTimer=setTimeout(guardarCambiosLotes,1200);
+  pintarGuardado();vigilarSalida();
+}
+function confirmarCambiosLote(id,escritos){
+  const cambios=cambiosLotes.get(id);
+  if(!cambios)return;
+  for(const [clave,aplicar] of escritos){if(cambios.get(clave)===aplicar)cambios.delete(clave)}
+  if(!cambios.size)cambiosLotes.delete(id);
+}
+function aplicarCambiosLote(l,cambios){
+  if(!l)throw new Error("El lote pendiente ya no está en el historial");
+  const copia=JSON.parse(JSON.stringify(l));
+  for(const aplicar of cambios.values())aplicar(copia);
+  return copia;
+}
+async function guardarCambiosLotes(){
+  if(!cambiosLotes.size)return true;
+  if(guardandoCambiosLotes||creandoLote)return false;
+  clearTimeout(loteTimer);guardandoCambiosLotes=true;
+  const version=versionCambiosLotes;
+  const pendientes=[...cambiosLotes].map(([id,cambios])=>[id,new Map(cambios)]);
+  try{
+    if(db){
+      for(const [id,cambios] of pendientes){
+        if(!cambiosLotes.has(id))continue;
+        await escribirLote(id,l=>aplicarCambiosLote(l,cambios));
+        confirmarCambiosLote(id,cambios);
+      }
+    }else{
+      let lotes=LOTES;
+      for(const [id,cambios] of pendientes){
+        const lote=aplicarCambiosLote(lotes.find(l=>l.id===id),cambios);
+        lotes=reemplazarLote(lotes,id,lote);
+      }
+      guardarLotesLocal(lotes);
+      for(const [id,cambios] of pendientes)confirmarCambiosLote(id,cambios);
+    }
+    errorLotes=false;return true;
+  }catch(e){
+    errorLotes=true;return false;
+  }finally{
+    guardandoCambiosLotes=false;renderHistorial();pintarLote();pintarGuardado();vigilarSalida();
+    if(version!==versionCambiosLotes&&cambiosLotes.size){
+      clearTimeout(loteTimer);loteTimer=setTimeout(guardarCambiosLotes,0);
+    }
+  }
+}
+function pintarLote(){const b=$("lotePill");if(!b)return;const l=S.loteActivo&&LOTES.find(x=>x.id===S.loteActivo);
   if(!l){b.hidden=true;return}b.hidden=false;
+  const error=errorLotes&&cambiosLotes.has(l.id);
   b.innerHTML=`${ico("historial")}<span>Lote en curso: <b>${esc(l.nombre)}</b></span>`;b.title=error?"No se pudo guardar el lote en el historial":"Cada cambio se guarda automáticamente en este lote del historial";
-  b.classList.toggle("err",!!error)}
+  b.classList.toggle("err",error)}
 
 /* ---------- historial de lotes ---------- */
 function renderLoteForm(){
@@ -1078,29 +1211,84 @@ function renderLoteForm(){
     <div style="display:flex;gap:6px"><button class="btn primary" type="submit">Guardar</button><button class="btn" type="button" id="l-cancel">Cancelar</button></div>
   </form>
   <div class="al warn" id="l-dup" hidden></div>
+  <div class="al err" id="l-error" role="alert" hidden></div>
   <label class="chk"><input type="checkbox" id="l-vaciar"> Vaciar los pedidos después de guardar para empezar un lote nuevo</label>`;
 }
-function guardarLotesLocal(){try{localStorage.setItem("montajes-lotes",JSON.stringify(LOTES))}catch(e){}}
+function guardarLotesLocal(lotes){
+  if(lecturaLotesFallida)throw new Error("Lectura inicial del historial fallida");
+  localStorage.setItem("montajes-lotes",JSON.stringify(lotes));
+  LOTES=lotes;
+}
+function reemplazarLote(lotes,id,lote){
+  if(!lote)return lotes.filter(l=>l.id!==id);
+  if(!lotes.some(l=>l.id===id))return [...lotes,lote];
+  return lotes.map(l=>l.id===id?lote:l);
+}
+async function escribirLote(id,actualizar){
+  if(!db){
+    const lote=actualizar(LOTES.find(l=>l.id===id));
+    guardarLotesLocal(reemplazarLote(LOTES,id,lote));
+    return;
+  }
+  const anterior=escriturasLote.get(id);
+  const escritura=(async()=>{
+    if(anterior){try{await anterior}catch(e){/* La siguiente edición parte del último lote guardado. */}}
+    const lote=actualizar(LOTES.find(l=>l.id===id));
+    const destino=db.collection("lotes").doc(id);
+    if(lote){const {id:_,...doc}=lote;await destino.set(doc)}
+    else await destino.delete();
+    LOTES=reemplazarLote(LOTES,id,lote);
+  })();
+  escriturasLote.set(id,escritura);
+  try{await escritura}
+  finally{if(escriturasLote.get(id)===escritura)escriturasLote.delete(id)}
+}
 async function crearLote(sobre){
+  if(creandoLote)return;
   const nombre=$("l-nombre").value.trim()||`Lote ${fecha(hoyISO())}`;
   /* ¿ya existe un lote con ese nombre? */
   const previo=LOTES.find(l=>(l.nombre||"").trim().toLowerCase()===nombre.toLowerCase());
   if(previo&&!sobre){const w=$("l-dup");w.hidden=false;
     w.innerHTML=`<span class="k">Ya existe</span><span class="tx">Hay un lote llamado “${esc(previo.nombre)}”, guardado el ${fecha(previo.fecha)}. ¿Qué quieres hacer?</span><button class="btn sm" type="button" id="l-ren">Renombrar</button><button class="btn sm danger" type="button" id="l-sob">Sobrescribir</button>`;
     $("l-ren").focus();return}const f=$("l-fecha").dataset.val||hoyISO();const vaciar=$("l-vaciar").checked;
-  const con=S.clientes.filter(c=>sumCliente(c).total>0);
-  if(!con.length){toast("No hay prendas cargadas para guardar.");return}
-  const t=totales(con);
-  const doc={nombre,fecha:f,creado:Date.now(),portadaCli:S.portadaCli||null,ajustes:JSON.parse(JSON.stringify(S.ajustes)),clientes:JSON.parse(JSON.stringify(con)),resumen:{clientes:con.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total}};
+  const datos=datosLote();
+  if(!datos){toast("No hay prendas cargadas para guardar.");return}
+  const nid=previo?previo.id:"l"+uid()+uid();
+  const doc={id:nid,nombre,fecha:f,creado:Date.now(),...datos};
+  const pendientes=new Map(cambiosLotes.get(nid));
+  const version=versionPedido;
+  const controles=[...$("loteForm").querySelectorAll("button,input")];
+  const submit=$("fLote").querySelector('[type="submit"]');
+  creandoLote=true;$("l-error").hidden=true;controles.forEach(el=>el.disabled=true);vigilarSalida();
+  submit.textContent="Guardando…";
   try{
-    let nid;
-    if(previo&&sobre){nid=previo.id;if(db){await db.collection("lotes").doc(previo.id).set(doc)}else{const i=LOTES.indexOf(previo);LOTES[i]=Object.assign({id:previo.id},doc);guardarLotesLocal()}}
-    else{nid="l"+uid()+uid();if(db){await db.collection("lotes").doc(nid).set(doc)}else{LOTES.push(Object.assign({id:nid},doc));guardarLotesLocal()}}
-    if(!LOTES.find(x=>x.id===nid))LOTES.push(Object.assign({id:nid},doc));
-    S.loteActivo=vaciar?null:nid;cerrarGrupo();persistir();renderHistorial();pintarLote();
-    $("loteForm").hidden=true;toast(previo&&sobre?`Lote “${nombre}” sobrescrito.`:`Lote “${nombre}” guardado.`);
-    if(vaciar){S.clientes=[];sel=null;prodSel=null;renderTodo();changed()}
-  }catch(e){toast(e&&e.code==="quota_exceeded"?"El historial está lleno. Elimina lotes viejos.":"No se pudo guardar el lote. Intenta de nuevo.")}
+    try{await escribirLote(nid,()=>doc)}
+    catch(e){
+      lotePorReintentar=true;
+      const mensaje=e&&(e.code==="quota_exceeded"||e.name==="QuotaExceededError")?
+        "No se pudo guardar el lote. Se alcanzó el límite de almacenamiento. Libera espacio e intenta de nuevo.":
+        "No se pudo guardar el lote. Intenta de nuevo.";
+      $("l-error").textContent=mensaje;$("l-error").hidden=false;toast(mensaje);
+      return;
+    }
+    lotePorReintentar=false;
+    confirmarCambiosLote(nid,pendientes);
+    if(!cambiosLotes.size)errorLotes=false;
+    const mensaje=previo?`Lote “${nombre}” sobrescrito.`:`Lote “${nombre}” guardado.`;
+    let detalle="";
+    if(vaciar){
+      if(!await guardar(version)){
+        detalle=version!==versionPedido?" Se conservaron los cambios hechos durante el guardado.":" No se pudieron vaciar los pedidos.";
+      }
+    }else if(version===versionPedido){
+      S.loteActivo=nid;cerrarGrupo();persistir();
+    }
+    $("loteForm").hidden=true;renderHistorial();pintarLote();pintarGuardado();
+    toast(mensaje+detalle);
+  }finally{
+    creandoLote=false;controles.forEach(el=>el.disabled=false);submit.textContent="Guardar";vigilarSalida();
+    if(cambiosLotes.size){clearTimeout(loteTimer);loteTimer=setTimeout(guardarCambiosLotes,1200)}
+  }
 }
 function renderHistorial(){
   const el=$("v-historial");if(!el)return;
@@ -1111,7 +1299,7 @@ function renderHistorial(){
     const thumb=`<div class="lthumb" data-lote="${l.id}">${im?imgTag(fotoProd(im),"",`loading="lazy"`):ico("img")}
       <div class="lacts"><button class="lact" data-pcam="${l.id}" title="${im?"Cambiar imagen":"Agregar imagen"}" aria-label="${im?"Cambiar imagen":"Agregar imagen"}">${ico("img")}</button>${im?`<button class="lact del" data-pdel="${l.id}" title="Quitar imagen" aria-label="Quitar imagen">${ico("reset")}</button>`:""}</div></div>`;
     return `<article class="card edge lote" style="--c:var(--accent)"><div class="ltop"><div class="linfo">
-    <div>${renLote===l.id?`<div class="lren"><input id="lrenIn" value="${esc(l.nombre)}" aria-label="Nuevo nombre del lote" autocomplete="off"><button class="ib ok" id="lrenOk" title="Confirmar nombre" aria-label="Confirmar nombre">${ico("check")}</button></div>`:`<h3 data-ren="${l.id}" title="Doble clic para cambiar el nombre">${esc(l.nombre)}</h3>`}<span class="note">${ico("cal").replace("<svg",'<svg width="13" height="13" style="vertical-align:-2px"')} ${fecha(l.fecha)}</span>${S.loteActivo===l.id?`<span class="encurso">En curso · se guarda solo</span>`:""}</div>
+    <div>${renLote===l.id?`<div class="lren"><input id="lrenIn" value="${esc(nombreLotePendiente)}" aria-label="Nuevo nombre del lote" autocomplete="off" ${renombrandoLote?"disabled":""}><button class="ib ok" id="lrenOk" title="Confirmar nombre" aria-label="Confirmar nombre" ${renombrandoLote?"disabled":""}>${ico("check")}</button></div>`:`<h3 data-ren="${l.id}" title="Doble clic para cambiar el nombre">${esc(l.nombre)}</h3>`}<span class="note">${ico("cal").replace("<svg",'<svg width="13" height="13" style="vertical-align:-2px"')} ${fecha(l.fecha)}</span>${S.loteActivo===l.id?`<span class="encurso">En curso · se guarda solo</span>`:""}</div>
     <div class="stats"><span><b class="num">${r.clientes||0}</b>clientes</span><span><b class="num">${r.completas||0}</b>completas</span><span><b class="num">${r.frentes||0}</b>frentes</span><span><b class="num">${r.piezas||0}</b>piezas</span></div>
     </div>${thumb}</div>
     <div class="lbtns">
@@ -1135,13 +1323,14 @@ window.addEventListener("hashchange",vista);
 document.querySelector(".side").addEventListener("click",e=>{const b=e.target.closest(".nav");if(b)location.hash=b.dataset.v});
 
 /* ---------- eventos ---------- */
-function abrirLote(){renderLoteForm();$("loteForm").hidden=false;$("l-nombre").focus();$("l-nombre").select();window.scrollTo({top:0,behavior:"smooth"})}
+function abrirLote(){if(!loaded||creandoLote)return;if($("loteForm").hidden)renderLoteForm();
+  $("loteForm").hidden=false;$("l-nombre").focus();$("l-nombre").select();window.scrollTo({top:0,behavior:"smooth"})}
 $("btnLote").addEventListener("click",abrirLote);
 $("lotePill").addEventListener("click",()=>{location.hash="historial"});
 $("loteForm").addEventListener("submit",e=>{e.preventDefault();crearLote()});
-$("loteForm").addEventListener("click",e=>{if(e.target.id==="l-cancel")$("loteForm").hidden=true;
+$("loteForm").addEventListener("click",e=>{if(e.target.id==="l-cancel"){$("loteForm").hidden=true;lotePorReintentar=false;vigilarSalida()}
   if(e.target.id==="l-ren"){$("l-dup").hidden=true;const i=$("l-nombre");i.focus();i.select()}
-  if(e.target.id==="l-sob"){$("l-dup").hidden=true;crearLote(true)}});
+  if(e.target.id==="l-sob")crearLote(true)});
 $("loteForm").addEventListener("input",e=>{if(e.target.id==="l-nombre")$("l-dup").hidden=true});
 $("addForm").addEventListener("submit",e=>{e.preventDefault();const n=$("newName").value.trim();if(!n){$("newName").focus();return}
   const c=normCli({id:uid(),nombre:n.toUpperCase(),diseno:"",pedido:hoyISO(),entrega:"",q:{},req:S.ajustes.fichaDef?JSON.parse(JSON.stringify(S.ajustes.fichaDef)):{}});S.clientes.push(c);sel=c.id;$("newName").value="";confirmDel=false;if(prodSel)prodSel.add(c.id);
@@ -1185,7 +1374,7 @@ $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel)
   if(id==="up"){$("fileImg").click();return}
   if(id==="noimg"){ponerImgCliente(cl.id,null);return}
   if(id==="ordReset"){S.ajustes.orden=null;renderEditor();renderResumen();renderProduccion();changed();toast("Orden de columnas restablecido.",{txt:"Deshacer",fn:deshacer});return}
-  if(id==="fichaDef"){if(fichaIgual(cl.req))return;S.ajustes.fichaDef=fichaDe(cl.req);renderEditor();changed();toast("Ficha guardada como predeterminada para los clientes nuevos.",{txt:"Deshacer",fn:deshacer});return}
+  if(id==="fichaDef"){if(fichaIgual(cl.req))return;S.ajustes.fichaDef=fichaDe(cl.req);renderEditor();changed();toast("Ficha establecida como predeterminada para los clientes nuevos.",{txt:"Deshacer",fn:deshacer});return}
   if(id==="fichaUsar"){const d=S.ajustes.fichaDef;Object.assign(cl.req,JSON.parse(JSON.stringify(d)));renderEditor();renderProduccion();changed();return}
   if(b.dataset.adm){abrirAdm(b.dataset.adm,b);return}
   if(b.dataset.ex){const k=b.dataset.ex;const ex=cl.req.extras;const i=ex.indexOf(k);if(i>=0)ex.splice(i,1);else ex.push(k);b.setAttribute("aria-pressed",i<0);renderProduccion();changed();pintarFicha();return}
@@ -1278,17 +1467,25 @@ function fotoProd(c){if(!c)return null;if(c.imgProd)return c.imgProd.none?null:c
 async function ponerImgCliente(id,img,soloProd){
   const poner=c=>{if(soloProd)c.imgProd=img?JSON.parse(JSON.stringify(img)):{none:true};else{c.img=img?JSON.parse(JSON.stringify(img)):null;delete c.imgProd}};
   const cl=S.clientes.find(c=>c.id===id);if(cl){poner(cl);changed()}
-  for(const l of LOTES){const lc=(l.clientes||[]).find(c=>c.id===id);if(!lc)continue;
-    poner(lc);delete l.portada;delete l.sinPortada;
-    try{await guardarLote(l)}catch(_){}}
-  if(!db)guardarLotesLocal();
-  renderEditor();renderProduccion();renderHistorial()}
+  for(const l of LOTES){
+    if(!(l.clientes||[]).some(c=>c.id===id))continue;
+    marcarCambioLote(l.id,`imagen:${id}`,copia=>{
+      const cliente=(copia.clientes||[]).find(c=>c.id===id);if(!cliente)return;
+      poner(cliente);delete copia.portada;delete copia.sinPortada;
+    });
+  }
+  renderEditor();renderProduccion();
+  return guardarCambiosLotes();
+}
 /* cliente que representa la imagen de un lote: el primero con imagen o, si ninguno tiene, el primero */
 function clientePortada(l){const cs=l.clientes||[];return cs.find(c=>c.id===l.portadaCli&&tieneImg(fotoProd(c)))||cs.find(c=>tieneImg(fotoProd(c)))||cs[0]||null}
 /* elegir la imagen de un cliente como portada del lote en curso */
 async function usarPortada(id){S.portadaCli=id;changed();renderProduccion();
   const l=S.loteActivo&&LOTES.find(x=>x.id===S.loteActivo);const cl=S.clientes.find(c=>c.id===id);
-  if(l){l.portadaCli=id;delete l.portada;delete l.sinPortada;try{await guardarLote(l)}catch(_){}renderHistorial();toast(`Portada de “${l.nombre}”: ${cl?cl.nombre:""}.`)}
+  if(l){
+    marcarCambioLote(l.id,"portada",copia=>{copia.portadaCli=id;delete copia.portada;delete copia.sinPortada});
+    if(await guardarCambiosLotes())toast(`Portada de “${l.nombre}”: ${cl?cl.nombre:""}.`);
+  }
   else toast("Será la portada del lote cuando lo guardes.")}
 let imgDestino=null;
 /* arrastrar una imagen desde la computadora al cuadro del diseño o a la imagen de un lote */
@@ -1309,7 +1506,6 @@ document.addEventListener("drop",async e=>{if(!traeArchivo(e))return;e.preventDe
 
 /* portada de un lote: cambiarla o quitarla */
 let portadaDe=null;
-async function guardarLote(l){const doc=Object.assign({},l);delete doc.id;if(db)await db.collection("lotes").doc(l.id).set(doc);else guardarLotesLocal()}
 $("fileLote").addEventListener("change",async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";const l=LOTES.find(x=>x.id===portadaDe);portadaDe=null;if(!f||!l)return;
   const c=clientePortada(l);if(!c){toast("Este lote no tiene clientes.");return}
   const th=document.querySelector(`.lthumb[data-lote="${l.id}"]`);if(th)th.classList.add("cargando");
@@ -1317,15 +1513,20 @@ $("fileLote").addEventListener("change",async e=>{const f=e.target.files&&e.targ
 $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("[data-pcam],[data-pdel]");if(!b)return;
   if(b.dataset.pcam){portadaDe=b.dataset.pcam;$("fileLote").click();return}
   const l=LOTES.find(x=>x.id===b.dataset.pdel);if(!l)return;
-  if(tieneImg(l.portada)&&!l.sinPortada){l.portada=null;try{await guardarLote(l)}catch(_){}renderHistorial();toast("Imagen quitada.");return}
-  const c=clientePortada(l);if(!c||!tieneImg(fotoProd(c)))return;await ponerImgCliente(c.id,null,true);toast(`Imagen de ${c.nombre} quitada.`)});
-$("v-produccion").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(tieneImg(l.portada)&&!l.sinPortada){
+    marcarCambioLote(l.id,"portada",copia=>{copia.portada=null});
+    if(await guardarCambiosLotes())toast("Imagen quitada.");
+    return;
+  }
+  const c=clientePortada(l);if(!c||!tieneImg(fotoProd(c)))return;
+  if(await ponerImgCliente(c.id,null,true))toast(`Imagen de ${c.nombre} quitada.`)});
+$("v-produccion").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.ps){const id=b.dataset.ps;prodSel.has(id)?prodSel.delete(id):prodSel.add(id);renderProduccion();return}
   if(b.id==="psTodos"){const {con}=prodClientes();prodSel=new Set(con.map(c=>c.id));renderProduccion();return}
   if(b.id==="psNinguno"){prodSel=new Set();renderProduccion();return}
   if(b.dataset.cport){usarPortada(b.dataset.cport);return}
   if(b.dataset.ccam){imgDestino=b.dataset.ccam;$("fileImg").click();return}
-  if(b.dataset.cdel){ponerImgCliente(b.dataset.cdel,null);toast("Imagen quitada.",{txt:"Deshacer",fn:deshacer});return}
+  if(b.dataset.cdel){if(await ponerImgCliente(b.dataset.cdel,null))toast("Imagen quitada.",{txt:"Deshacer",fn:deshacer});return}
   if(b.id==="dlHoja")descargarHoja(b);if(b.id==="prHoja")imprimirHoja(b)});
 $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.id==="hLote"){abrirLote();return}
@@ -1335,9 +1536,13 @@ $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("bu
   if(b.dataset.lc){const l=LOTES.find(x=>x.id===b.dataset.lc);if(!l)return;
     S.clientes=JSON.parse(JSON.stringify(l.clientes||[])).map(normCli);S.ajustes=normAj(l.ajustes);S.loteActivo=l.id;S.portadaCli=l.portadaCli||null;sel=S.clientes[0]&&S.clientes[0].id;prodSel=null;loteConfirm=null;
     renderTodo();changed();toast(`“${l.nombre}” cargado en Pedidos.`);location.hash="pedidos";return}
-  if(b.dataset.ld){const id=b.dataset.ld;loteConfirm=null;
-    try{if(db)await db.collection("lotes").doc(id).delete();else{LOTES=LOTES.filter(x=>x.id!==id);guardarLotesLocal();renderHistorial()}toast("Lote eliminado.")}
-    catch(err){toast("No se pudo eliminar el lote.");renderHistorial()}}
+  if(b.dataset.ld){const id=b.dataset.ld;b.disabled=true;
+    try{
+      await escribirLote(id,()=>null);
+      if(loteConfirm&&loteConfirm.id===id)loteConfirm=null;
+      cambiosLotes.delete(id);if(!cambiosLotes.size)errorLotes=false;
+      renderHistorial();pintarLote();pintarGuardado();vigilarSalida();toast("Lote eliminado.");
+    }catch(err){b.disabled=false;toast("No se pudo eliminar el lote. Intenta de nuevo.")}}
 });
 $("v-resumen").addEventListener("change",e=>{if(e.target.id==="pzShort"){const v=Math.max(1,Math.round(val(e.target.value))||2);S.ajustes.piezasShort=v;renderTodo();changed()}});
 $("v-resumen").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
@@ -1522,11 +1727,16 @@ async function aplicarRespaldo(obj){
   const fijar=arr=>(arr||[]).map(c=>{if(c.img&&c.img.ref)c.img=mapa[c.img.ref]?Object.assign({nombre:c.img.nombre||""},mapa[c.img.ref]):null;if(c.imgProd&&c.imgProd.ref)c.imgProd=mapa[c.imgProd.ref]?Object.assign({nombre:c.imgProd.nombre||""},mapa[c.imgProd.ref]):null;return normCli(c)});
   cerrarGrupo();S.clientes=fijar(obj.datos&&obj.datos.clientes);S.ajustes=normAj(obj.datos&&obj.datos.ajustes);sel=S.clientes[0]&&S.clientes[0].id;prodSel=null;tallasFijas=null;
   renderTodo();changed();
-  const yaEsta=l=>LOTES.some(x=>x.nombre===l.nombre&&x.creado===l.creado);
+  let lotes=LOTES, falloLotes=false;
+  const yaEsta=l=>lotes.some(x=>x.nombre===l.nombre&&x.creado===l.creado);
   for(const l of obj.lotes||[]){if(yaEsta(l))continue;const doc=Object.assign({},l,{clientes:fijar(l.clientes),portada:l.portada&&l.portada.ref&&mapa[l.portada.ref]?Object.assign({nombre:l.portada.nombre||""},mapa[l.portada.ref]):null});delete doc.id;
-    try{if(db)await db.collection("lotes").add(doc);else LOTES.push(Object.assign({id:uid()},doc))}catch(e){}}
-  if(!db){guardarLotesLocal();renderHistorial()}
-  toast("Respaldo importado.")}
+    try{if(db)await db.collection("lotes").add(doc);else lotes=[...lotes,Object.assign({id:uid()},doc)]}catch(e){falloLotes=true}}
+  if(!db&&lotes!==LOTES){
+    try{guardarLotesLocal(lotes);renderHistorial()}catch(e){falloLotes=true}
+  }
+  await guardar();
+  toast(falloLotes?"No se pudieron guardar todos los lotes del respaldo. Puedes volver a importarlo.":
+    dirty?"Los pedidos del respaldo están pendientes de guardar.":"Respaldo importado.")}
 $("v-historial").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.id==="resExp")exportarRespaldo(b);
   if(b.id==="resImp")$("fileResp").click()});
@@ -1542,19 +1752,27 @@ $("modal").addEventListener("click",async e=>{const b=e.target.closest("button")
   b.disabled=true;b.textContent="Importando…";const o=respPend;respPend=null;await aplicarRespaldo(o);cerrarModal()});
 
 /* ---------- cambiar el nombre de un lote con doble clic ---------- */
-$("v-historial").addEventListener("dblclick",e=>{const h=e.target.closest("h3[data-ren]");if(!h)return;renLote=h.dataset.ren;renderHistorial();const i=$("lrenIn");if(i){i.focus();i.select()}});
-async function guardarNombreLote(){const l=LOTES.find(x=>x.id===renLote);const i=$("lrenIn");if(!l||!i)return;const v=i.value.trim();
+$("v-historial").addEventListener("dblclick",e=>{const h=e.target.closest("h3[data-ren]");if(!h||renombrandoLote)return;
+  renLote=h.dataset.ren;nombreLotePendiente=h.textContent;renderHistorial();vigilarSalida();const i=$("lrenIn");i.focus();i.select()});
+$("v-historial").addEventListener("input",e=>{if(e.target.id==="lrenIn"){nombreLotePendiente=e.target.value;vigilarSalida()}});
+async function guardarNombreLote(){const l=LOTES.find(x=>x.id===renLote);const i=$("lrenIn");if(!l||!i||renombrandoLote)return;const v=i.value.trim();
   if(!v){toast("El nombre del lote no puede quedar vacío.");i.focus();return}
-  if(v===l.nombre){renLote=null;renderHistorial();return}
+  if(v===l.nombre){renLote=null;renderHistorial();vigilarSalida();return}
   if(LOTES.some(x=>x!==l&&(x.nombre||"").trim().toLowerCase()===v.toLowerCase())){toast(`Ya existe un lote llamado “${v}”.`);i.focus();i.select();return}
-  try{const doc=Object.assign({},l,{nombre:v});delete doc.id;
-    if(db)await db.collection("lotes").doc(l.id).set(doc);else{l.nombre=v;guardarLotesLocal()}
-    l.nombre=v;renLote=null;renderHistorial();toast("Nombre del lote actualizado.")}
-  catch(e){toast("No se pudo cambiar el nombre. Intenta de nuevo.")}}
+  nombreLotePendiente=i.value;renombrandoLote=true;i.disabled=$("lrenOk").disabled=true;vigilarSalida();
+  try{
+    await escribirLote(l.id,actual=>{
+      if(!actual)throw new Error("El lote ya no está en el historial");
+      return {...actual,nombre:v};
+    });
+    renLote=null;toast("Nombre del lote actualizado.");
+  }catch(e){toast("No se pudo cambiar el nombre. Intenta de nuevo.")}
+  finally{renombrandoLote=false;renderHistorial();vigilarSalida()}
+}
 $("v-historial").addEventListener("click",e=>{if(e.target.closest("#lrenOk"))guardarNombreLote()});
 $("v-historial").addEventListener("keydown",e=>{if(e.target.id!=="lrenIn")return;
   if(e.key==="Enter"){e.preventDefault();guardarNombreLote()}
-  else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();renLote=null;renderHistorial()}});
+  else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();renLote=null;renderHistorial();vigilarSalida()}});
 
 /* ---------- clientes de una talla (clic en una fila de "Prendas por talla") ---------- */
 function verTalla(t,origen){const cols=colsRes;if(!cols.length)return;
