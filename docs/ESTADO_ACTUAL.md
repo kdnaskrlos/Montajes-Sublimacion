@@ -1,5 +1,5 @@
 # Estado actual
-Fecha: 2026-11-25. Versión de I1: 1.28.4. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Rama base: main.
+Fecha: 2026-11-25. Versión verificada en I2: 1.28.5. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Rama base: main.
 
 ## Base técnica
 Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
@@ -23,20 +23,27 @@ Comando y alcance de las pruebas en [tests/README.md](../tests/README.md).
 - Los autosalvados fallidos de pedidos y lotes conservan las ediciones en memoria y muestran **Reintentar guardado**. Ocultar la página, recargarla o cerrarla dispara un intento inmediato. Si quedan cambios en memoria, la aplicación solicita el aviso de salida que admita el navegador.
 - Chromium verificó fallos simulados de cuota, reintentos, historial, vaciado, recarga y cierre normal. Un adaptador simulado verificó rechazos y ediciones concurrentes durante la escritura. El servicio real de Claude y los cierres forzados quedaron fuera de estas pruebas.
 
+## Validación de I2
+
+- Los respaldos formato 1 nuevos incluyen lote activo, portada de pedidos y tema. Un respaldo incompleto, con referencias ausentes o con imágenes que no se pueden abrir se rechaza antes de escribir pedidos o lotes.
+- IndexedDB conserva un punto de recuperación del navegador. La app revierte fallos parciales y retoma una reversión pendiente al abrir. Historial ofrece **Restaurar estado anterior** tras cambiar el estado con un respaldo.
+- Importar la misma copia reutiliza imágenes y lotes. El vínculo activo apunta a la copia importada si está intacta. Si la copia coincide con un lote local previo o el lote importado fue modificado, los pedidos quedan desvinculados para proteger el historial. El formato 1 original, sin vínculo activo, también se restaura desvinculado.
+- Las 28 comprobaciones de Chromium con datos ficticios (15 de I0/I1 y 13 de I2) pasaron con `node tests/i0.mjs --no-sandbox` en HTTP local. Los fallos de almacenamiento fueron simulados. La política del entorno bloqueó `file://`.
+- La importación segura se realiza en la aplicación local con IndexedDB y Web Locks. El adaptador de Claude se simuló para verificar la indicación de usar el flujo local y sus guardados de I1. El servicio real quedó fuera de las pruebas.
+
 ## Hallazgos y prioridades
-P0: el respaldo no conserva loteActivo/portadaCli, ignora fallos de imágenes, valida la estructura superficialmente y puede mantener el vínculo anterior de lote activo al importar. La importación informa si falla la escritura de lotes. Queda pendiente asegurar la restauración de imágenes y datos en I2.
 P0: cantidades negativas/decimales llegan a totales, exportaciones y lotes; conversiones pares/unidades y shorts/piezas pueden producir fracciones. Proteger consistencia y confirmar reglas para sobrantes y chemis.
-P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pueden afectar múltiples lotes incluso desde historial; deshacer no incluye LOTES ni portadaCli; imágenes huérfanas sin limpieza; dos pestañas pueden sobrescribir datos; JSON importado puede contener valores maliciosos no escapados en plantillas HTML; CSV con nombre de fórmula; hoja de impresión puede recortar indicaciones por altura fija; renombrar cliente no refresca todas las vistas al momento; fecha de entrega no validada contra fecha de pedido.
+P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pueden afectar múltiples lotes incluso desde historial; deshacer no incluye LOTES ni portadaCli; imágenes huérfanas sin limpieza; dos pestañas pueden sobrescribir datos en el guardado ordinario; hoja de impresión puede recortar indicaciones por altura fija; renombrar cliente no refresca todas las vistas al momento; fecha de entrega no validada contra fecha de pedido.
 P2: estados definidos pero sin interfaz, campo diseño residual, funciones/estilos sin uso, accesibilidad y rendimiento de rerender; revisar mejoras de flujo solo tras estabilidad.
 
 ## Hoja de ruta
 I0: entorno Codex configurado y batería de referencia ejecutada con datos ficticios. HTML base v1.28.3 intacto.
-I1: guardado seguro de pedidos y lotes implementado y verificado en `codex/i1-guardado-seguro`, desde `d4a9930`. Pendiente revisión para incorporar a main.
-I2: respaldo/restauración segura, validación y aislamiento de lote activo; imágenes verificadas y compatibilidad formato 1 (alto).
+I1: guardado seguro de pedidos y lotes integrado en main, commit `db3fc4d`.
+I2: implementación local verificada en `codex/i2-respaldos-seguros` desde `db3fc4d`. Pendiente revisión del Pull Request.
 I3: integridad de cantidades, conversiones y alertas, pruebas de reglas de producción (alto).
-I4: aislamiento historial, deshacer y consistencia entre vistas; protección de importaciones y exportaciones (alto, dividir si es necesario).
+I4: aislamiento general del historial, deshacer y consistencia entre vistas (alto, dividir si es necesario).
 I5: impresión sin recortes, experiencia móvil/escritorio, accesibilidad (medio).
 I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar IndexedDB para datos si límites/volumen lo justifican; no nube por defecto.
 
 ## Próxima acción
-Revisar el Pull Request de I1. Después de su integración autorizada, abordar la restauración segura en I2.
+Revisar el Pull Request de I2. Tras su integración autorizada, abordar la integridad de cantidades y conversiones en I3.

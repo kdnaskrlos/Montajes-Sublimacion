@@ -111,17 +111,17 @@ async function page(context, path = '/app') {
   };
 }
 
-async function newContext() {
+async function newContext(downloadPath = dir) {
   const { browserContextId } = await send('Target.createBrowserContext');
-  await send('Browser.setDownloadBehavior', { behavior: 'allow', browserContextId, downloadPath: dir });
+  await send('Browser.setDownloadBehavior', { behavior: 'allow', browserContextId, downloadPath });
   return browserContextId;
 }
 
-async function download(prefix) {
-  const name = await waitFor(async () => (await readdir(dir)).find(
+async function download(prefix, carpeta = dir) {
+  const name = await waitFor(async () => (await readdir(carpeta)).find(
     name => name.startsWith(prefix) && !name.endsWith('.crdownload'),
   ), prefix);
-  return join(dir, name);
+  return join(carpeta, name);
 }
 
 const imageReady = selector =>
@@ -217,6 +217,61 @@ const imageFile = join(dir, 'referencia-ficticia.svg');
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="purple"/></svg>';
 const expectedImage = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
 await writeFile(imageFile, svg);
+
+const dataSvg = svg => 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
+const secondImage = dataSvg(svg.replace('purple', 'orange'));
+const toastText = "document.querySelector('#toast').textContent";
+let respaldoCompleto;
+function respaldoI2(editar = () => {}) {
+  const cliente = { id: 'cliente-ficticio', nombre: 'PEDIDO FICTICIO I2', pedido: '2026-11-25',
+    q: { M: { SM: 4 } }, img: { ref: 'pedido', nombre: 'pedido.svg' } };
+  const obj = {
+    app: 'Montajes Sublimación', formato: 1, exportado: '2026-11-25T12:00:00.000Z',
+    datos: { clientes: [cliente], ajustes: { piezasShort: 3 }, tema: 'dark',
+      loteActivo: 'lote-ficticio', portadaCli: cliente.id },
+    lotes: [{ id: 'lote-ficticio', nombre: 'LOTE FICTICIO I2', fecha: '2026-11-26', creado: 1795608000000,
+      portada: { ref: 'portada', nombre: 'portada.svg' }, ajustes: { piezasShort: 3 },
+      clientes: [{ ...structuredClone(cliente), imgProd: { ref: 'produccion', nombre: 'producción.svg' } }],
+      resumen: { clientes: 1, franelillas: 4, piezas: 8 } }],
+    imagenes: { pedido: expectedImage, produccion: secondImage, portada: secondImage },
+  };
+  editar(obj);
+  return obj;
+}
+const estadoRespaldo = p => p.evaluate(
+  "['montajes-sub', 'montajes-lotes', 'montajes-tema'].map(k => localStorage.getItem(k))",
+);
+async function clavesImagenes(p) {
+  return p.evaluate(`
+    new Promise(resolve => {
+      const open = indexedDB.open('montajes-img');
+      open.onsuccess = () => {
+        const tx = open.result.transaction('img');
+        const keys = tx.objectStore('img').getAllKeys();
+        tx.oncomplete = () => { open.result.close(); resolve(keys.result); };
+      };
+    })`);
+}
+let numeroArchivo = 0;
+async function archivoI2(p, obj) {
+  const archivo = join(dir, `i2-${++numeroArchivo}.json`);
+  await writeFile(archivo, typeof obj === 'string' || Buffer.isBuffer(obj) ? obj : JSON.stringify(obj));
+  await p.view('historial');
+  await p.evaluate("document.querySelector('#toast').hidden = true");
+  await p.upload('#fileResp', archivo);
+}
+async function importarI2(p, obj) {
+  await archivoI2(p, obj);
+  await p.wait("!document.querySelector('#modal').hidden && !!document.querySelector('#impOk')");
+  await p.click('#impOk');
+  await p.wait("document.querySelector('#modal').hidden && !document.querySelector('#toast').hidden");
+}
+async function rechazarI2(p, obj, mensaje) {
+  await archivoI2(p, obj);
+  await p.wait("!document.querySelector('#toast').hidden");
+  assert.match(await p.evaluate(toastText), mensaje);
+  assert.equal(await p.evaluate("document.querySelector('#modal').hidden"), true);
+}
 
 try {
   const context = await newContext();
@@ -546,6 +601,376 @@ try {
     assert.equal(await isolated.evaluate('window.remoteLots.length'), 1);
     assert.equal(await isolated.evaluate('window.remoteOrders.clientes[0].q.M.SM'), 3);
   });
+
+  await check('I2 · Exportación completa y restauración verificada en un navegador limpio', async () => {
+    const carpeta = await mkdtemp(join(dir, "completo-"));
+    const origen = await page(await newContext(carpeta));
+    await seedOrder(origen);
+    await origen.upload('#fileImg', imageFile);
+    await origen.wait(imageReady('#imgbox img'));
+    const portada = await origen.evaluate(`
+      new Promise(resolve => {
+        const open = indexedDB.open('montajes-img');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('img', 'readwrite');
+          tx.objectStore('img').put(${JSON.stringify(secondImage)}, 'portada-ficticia');
+          tx.oncomplete = () => { open.result.close(); resolve(true); };
+        };
+      })`);
+    assert.ok(portada);
+    await saveLot(origen, 'LOTE ACTIVO FICTICIO', false);
+    await origen.wait(`${stored('montajes-sub')}?.loteActivo && ${lotQuantity} === 2`);
+    await origen.view('produccion');
+    await origen.click('[data-cport]');
+    await origen.wait(`Boolean(${stored('montajes-sub')}?.portadaCli && ${stored('montajes-lotes')}?.[0]?.portadaCli)`);
+    await origen.evaluate(`{
+      const pedido = ${stored('montajes-sub')};
+      const historial = ${stored('montajes-lotes')};
+      pedido.ajustes.piezasShort = 3;
+      pedido.ajustes.listas.tela = ['Tela ficticia'];
+      historial[0].clientes[0].imgProd = { lid: 'portada-ficticia', nombre: 'producción' };
+      historial[0].portada = { lid: 'portada-ficticia', nombre: 'portada' };
+      historial[0].portadaCli = null;
+      localStorage.setItem('montajes-sub', JSON.stringify(pedido));
+      localStorage.setItem('montajes-lotes', JSON.stringify(historial));
+      localStorage.setItem('montajes-tema', 'dark');
+    }`);
+    await origen.navigate();
+    await origen.view('historial');
+    await origen.click('#resExp');
+    await origen.wait(`/Respaldo verificado/.test(${toastText})`);
+    const archivo = await download('respaldo-montajes-', carpeta);
+    respaldoCompleto = JSON.parse(await readFile(archivo, 'utf8'));
+    assert.equal(respaldoCompleto.formato, 1);
+    assert.equal(respaldoCompleto.datos.loteActivo, respaldoCompleto.lotes[0].id);
+    assert.equal(respaldoCompleto.datos.portadaCli, respaldoCompleto.datos.clientes[0].id);
+    assert.equal(respaldoCompleto.datos.tema, 'dark');
+    assert.equal(respaldoCompleto.imagenes[respaldoCompleto.datos.clientes[0].img.ref], expectedImage);
+    assert.equal(respaldoCompleto.imagenes[respaldoCompleto.lotes[0].clientes[0].imgProd.ref], secondImage);
+    assert.equal(respaldoCompleto.imagenes[respaldoCompleto.lotes[0].portada.ref], secondImage);
+
+    const destino = await page(await newContext());
+    assert.deepEqual(await estadoRespaldo(destino), [null, null, null]);
+    await importarI2(destino, respaldoCompleto);
+    assert.match(await destino.evaluate(toastText), /^Respaldo importado\./);
+    await destino.navigate();
+    await destino.wait(imageReady('#imgbox img'));
+    assert.equal(await destino.evaluate("document.querySelector('#imgbox img').src"), expectedImage);
+    await destino.view('historial');
+    await destino.wait(imageReady('.lthumb img'));
+    assert.equal(await destino.evaluate("document.querySelector('.lthumb img').src"), secondImage);
+    const [pedidos, lotes, tema] = (await estadoRespaldo(destino)).map((x, i) => i < 2 ? JSON.parse(x) : x);
+    assert.equal(pedidos.portadaCli, pedidos.clientes[0].id);
+    assert.equal(pedidos.loteActivo, lotes[0].id);
+    assert.equal(pedidos.ajustes.piezasShort, 3);
+    assert.deepEqual(pedidos.ajustes.listas.tela, ['Tela ficticia']);
+    assert.equal(tema, 'dark');
+    assert.equal(await destino.evaluate("document.documentElement.dataset.theme"), 'dark');
+    assert.equal(await destino.evaluate("document.querySelector('#resRec').hidden"), false);
+  });
+
+  await check('I2 · El adaptador de Claude simulado muestra la ruta local sin iniciar escrituras', async () => {
+    const p = await page(await newContext(), '/app-remota');
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /Importa el respaldo en la aplicación descargada/);
+    assert.equal(await p.evaluate('window.remoteWrites.length'), 0);
+    assert.equal(await p.evaluate('window.remoteOrders.clientes[0].q.M.SM'), 2);
+  });
+
+  await check('I2 · JSON corrupto, formato ajeno y datos anidados inválidos se rechazan sin escribir', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    const antes = await estadoRespaldo(p);
+    const casos = [
+      ['{', /corrupto/],
+      [Buffer.concat([Buffer.from('{"texto":"'), Buffer.from([0xff]), Buffer.from('"}')]), /corrupto/],
+      [{ ...respaldoI2(), app: 'Aplicación ficticia' }, /no es un respaldo/],
+      [{ ...respaldoI2(), formato: 7 }, /formato.*compatible/],
+      [{ ...respaldoI2(), lotes: null }, /lista de lotes/],
+      [respaldoI2(obj => { obj.datos.clientes[0].q.M.SM = '3'; }), /pedidos.clientes.*q.M.SM/],
+      [respaldoI2(obj => { obj.datos.clientes[0].pedido = '2026-02-30'; }), /pedido/],
+      [respaldoI2(obj => { obj.datos.ajustes.listas = { tela: [null] }; }), /listas.tela/],
+      [respaldoI2(obj => { obj.datos.loteActivo = 'inexistente'; }), /loteActivo/],
+      [respaldoI2(obj => { obj.lotes[0].resumen.piezas = {}; }), /Resumen inválido/],
+      [respaldoI2(obj => { obj.lotes.push(structuredClone(obj.lotes[0])); }), /duplicado/],
+    ];
+    for (const [obj, mensaje] of casos) {
+      await rechazarI2(p, obj, mensaje);
+      assert.deepEqual(await estadoRespaldo(p), antes);
+    }
+  });
+
+  await check('I2 · Se rechazan imágenes ausentes o corruptas en pedidos, producción y portadas', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    const antes = await estadoRespaldo(p);
+    await rechazarI2(p, respaldoI2(obj => { delete obj.imagenes.pedido; }), /Falta la imagen/);
+    await rechazarI2(p, respaldoI2(obj => { obj.imagenes.portada = null; }), /Falta la imagen.*portada/);
+    await rechazarI2(p, respaldoI2(obj => { obj.imagenes.produccion = 'data:image/png;base64,AAAA'; }), /corrupta.*imgProd/);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+
+    await p.upload('#fileImg', imageFile);
+    await p.wait(imageReady('#imgbox img'));
+    await p.wait(`Boolean(${stored('montajes-sub')}?.clientes[0]?.img?.lid)`);
+    await p.evaluate(`
+      new Promise(resolve => {
+        const open = indexedDB.open('montajes-img');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('img', 'readwrite');
+          tx.objectStore('img').delete(${stored('montajes-sub')}.clientes[0].img.lid);
+          tx.oncomplete = () => { open.result.close(); resolve(); };
+        };
+      })`);
+    await p.view('historial');
+    await p.click('#resExp');
+    await p.wait(`/Falta la imagen/.test(${toastText})`);
+  });
+
+  await check('I2 · El aborto de IndexedDB deja intactos los pedidos y permite reintentar', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    const antes = await estadoRespaldo(p);
+    await p.evaluate(`
+      window.originalAdd = IDBObjectStore.prototype.add;
+      IDBObjectStore.prototype.add = function (value, key) {
+        const request = window.originalAdd.call(this, value, key);
+        if (key.startsWith('ir-')) this.transaction.abort();
+        return request;
+      };
+    `);
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /No se pudo guardar/);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.deepEqual(await clavesImagenes(p), []);
+    await p.evaluate('IDBObjectStore.prototype.add = window.originalAdd');
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /^Respaldo importado\./);
+  });
+
+  await check('I2 · Un fallo tras escribir los pedidos revierte la importación y las imágenes nuevas', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await saveLot(p, 'LOTE PREVIO FICTICIO', false);
+    await p.wait(`${stored('montajes-sub')}?.loteActivo && ${lotQuantity} === 2`);
+    await p.wait("Boolean(document.querySelector('#save.ok'))");
+    const antes = await estadoRespaldo(p);
+    await blockWrite(p, 'montajes-lotes');
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /Se conservaron los datos anteriores/);
+    assert.equal(await p.evaluate('window.rejectedWrites'), 1);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.deepEqual(await clavesImagenes(p), []);
+    await p.navigate();
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.equal(await p.evaluate("document.querySelector('#c-M-SM').value"), '2');
+  });
+
+  await check('I2 · Una escritura no verificable o un fallo de confirmación impiden el éxito', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    const antes = await estadoRespaldo(p);
+    await p.evaluate(`
+      window.originalAdd = IDBObjectStore.prototype.add;
+      IDBObjectStore.prototype.add = function (value, key) {
+        return key.startsWith('ir-') ? this.count() : window.originalAdd.call(this, value, key);
+      };
+    `);
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /No se pudo verificar una imagen/);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.deepEqual(await clavesImagenes(p), []);
+    await p.evaluate(`
+      IDBObjectStore.prototype.add = window.originalAdd;
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value, key) {
+        const solicitud = put.call(this, value, key);
+        if (key === 'respaldo:anterior') this.transaction.abort();
+        return solicitud;
+      };
+    `);
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /Se conservaron los datos anteriores/);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.deepEqual(await clavesImagenes(p), []);
+  });
+
+  await check('I2 · El diario completa la recuperación al reabrir tras un fallo de reversión', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await p.evaluate("localStorage.setItem('montajes-tema', 'light')");
+    const antes = await estadoRespaldo(p);
+    await p.evaluate(`
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value, key) {
+        const solicitud = put.call(this, value, key);
+        if (key === 'respaldo:anterior') this.transaction.abort();
+        return solicitud;
+      };
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === 'montajes-tema' && value === 'light') {
+          throw new DOMException('Fallo ficticio', 'QuotaExceededError');
+        }
+        return setItem.call(this, key, value);
+      };
+    `);
+    await importarI2(p, respaldoI2());
+    assert.match(await p.evaluate(toastText), /copia anterior está guardada/);
+    assert.ok((await clavesImagenes(p)).includes('respaldo:pendiente'));
+    await p.navigate();
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    assert.deepEqual(await clavesImagenes(p), []);
+    assert.equal(await p.evaluate("document.querySelector('#c-M-SM').value"), '2');
+    assert.equal(await p.evaluate("document.documentElement.dataset.theme"), 'light');
+  });
+
+  await check('I2 · Restaurar estado anterior recupera pedidos, lote activo, portada, imagen y tema tras recargar', async () => {
+    const p = await page(await newContext());
+    await importarI2(p, respaldoI2());
+    const antes = await estadoRespaldo(p);
+    await importarI2(p, respaldoI2(obj => { obj.datos.tema = 'light'; obj.datos.clientes[0].q.M.SM = 9; }));
+    assert.equal(await p.evaluate(orderQuantity), 9);
+    await p.navigate();
+    await p.view('historial');
+    await p.click('#resRec');
+    await p.click('#impOk');
+    await p.wait("document.querySelector('#modal').hidden");
+    assert.match(await p.evaluate(toastText), /Estado anterior restaurado/);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    await p.navigate();
+    await p.wait(imageReady('#imgbox img'));
+    assert.equal(await p.evaluate("document.querySelector('#imgbox img').src"), expectedImage);
+    assert.equal(await p.evaluate("document.documentElement.dataset.theme"), 'dark');
+  });
+
+  await check('I2 · Reimportar la misma copia conserva el total de lotes y reutiliza las imágenes', async () => {
+    const p = await page(await newContext());
+    const obj = respaldoCompleto || respaldoI2();
+    await importarI2(p, obj);
+    const [pedido, lotes] = (await estadoRespaldo(p)).slice(0, 2).map(JSON.parse);
+    const claves = await clavesImagenes(p);
+    const antes = await estadoRespaldo(p);
+    await importarI2(p, obj);
+    assert.deepEqual(await estadoRespaldo(p), antes);
+    const [repetido, historial] = (await estadoRespaldo(p)).slice(0, 2).map(JSON.parse);
+    assert.deepEqual(historial, lotes);
+    assert.deepEqual(repetido.clientes, pedido.clientes);
+    assert.equal(repetido.loteActivo, pedido.loteActivo);
+    assert.deepEqual(await clavesImagenes(p), claves);
+    await p.click('#resRec');
+    await p.click('#impOk');
+    await p.wait("document.querySelector('#modal').hidden");
+    assert.deepEqual(await estadoRespaldo(p), [null, null, null]);
+  });
+
+  await check('I2 · Respaldo original formato 1 con imágenes L:, U: y D: conserva los datos', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await saveLot(p, 'LOTE LOCAL ANTES DEL FORMATO 1', false);
+    await p.wait(`${stored('montajes-sub')}?.loteActivo && document.querySelector('#save.ok')`);
+    const previo = JSON.parse((await estadoRespaldo(p))[1])[0];
+    await p.click('#themeBtn');
+    const tema = (await estadoRespaldo(p))[2];
+    const antiguo = respaldoI2(obj => {
+      delete obj.datos.loteActivo;
+      delete obj.datos.portadaCli;
+      delete obj.datos.tema;
+      for (const [img, ref] of [
+        [obj.datos.clientes[0].img, 'L:imagen-ficticia'],
+        [obj.lotes[0].clientes[0].img, 'L:imagen-ficticia'],
+        [obj.lotes[0].clientes[0].imgProd, 'D:produccion-ficticia'],
+        [obj.lotes[0].portada, 'U:https://example.invalid/portada-ficticia.svg'],
+      ]) {
+        obj.imagenes[ref] = obj.imagenes[img.ref];
+        img.ref = ref;
+      }
+      for (const key of ['pedido', 'produccion', 'portada']) delete obj.imagenes[key];
+      obj.datos.clientes[0].q.M.MC = 0.5;
+      obj.datos.clientes[0].q.M.L = -1;
+    });
+    await importarI2(p, antiguo);
+    const [datos, lotes, nuevoTema] = await estadoRespaldo(p);
+    assert.equal(JSON.parse(datos).loteActivo, null);
+    assert.equal(JSON.parse(datos).clientes[0].q.M.MC, 0.5);
+    assert.equal(JSON.parse(datos).clientes[0].q.M.L, -1);
+    assert.equal(JSON.parse(lotes).length, 2);
+    assert.deepEqual(JSON.parse(lotes)[0], previo);
+    assert.equal(nuevoTema, tema);
+    await p.navigate();
+    await p.wait(imageReady('#imgbox img'));
+    await p.view('historial');
+    await p.wait(imageReady('.lthumb img'));
+  });
+
+  await check('I2 · Un lote activo importado se vincula a su copia y los lotes previos quedan aislados', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await saveLot(p, 'LOTE PREEXISTENTE FICTICIO', false);
+    await p.wait(`${stored('montajes-sub')}?.loteActivo && ${lotQuantity} === 2 && document.querySelector('#save.ok')`);
+    const previo = JSON.parse((await estadoRespaldo(p))[1])[0];
+    const obj = respaldoI2(respaldo => {
+      respaldo.lotes[0].id = respaldo.datos.loteActivo = previo.id;
+      respaldo.lotes[0].nombre = previo.nombre;
+      respaldo.lotes[0].creado = previo.creado;
+      respaldo.lotes[0].clientes[0].id = respaldo.datos.clientes[0].id = previo.clientes[0].id;
+      respaldo.datos.portadaCli = previo.clientes[0].id;
+    });
+    await importarI2(p, obj);
+    const [pedido, lotes] = (await estadoRespaldo(p)).slice(0, 2).map(JSON.parse);
+    assert.notEqual(pedido.loteActivo, previo.id);
+    assert.notEqual(pedido.clientes[0].id, previo.clientes[0].id);
+    assert.equal(lotes.length, 2);
+    const nuevo = lotes.find(l => l.id === pedido.loteActivo);
+    assert.ok(nuevo);
+    await p.view('pedidos');
+    await p.evaluate(editQuantity(11));
+    await p.wait(`${stored('montajes-lotes')}.find(l => l.id === ${JSON.stringify(nuevo.id)}).clientes[0].q.M.SM === 11`);
+    await importarI2(p, obj);
+    assert.equal(JSON.parse((await estadoRespaldo(p))[0]).loteActivo, null);
+    await p.view('pedidos');
+    await p.click('#noimg');
+    await p.wait(`${stored('montajes-sub')}.clientes[0].img === null`);
+    const historial = JSON.parse((await estadoRespaldo(p))[1]);
+    assert.equal(historial.length, 2);
+    assert.deepEqual(historial[0], previo);
+    assert.equal(historial[1].clientes[0].q.M.SM, 11);
+    assert.ok(historial[1].clientes[0].img.lid);
+    await saveLot(p, previo.nombre, false);
+    assert.equal(await p.evaluate("Boolean(document.querySelector('#l-sob'))"), false);
+    assert.match(await p.evaluate("document.querySelector('#l-dup').textContent"), /varios lotes/);
+  });
+
+  await check('I2 · Rechazo de referencias, SVG activos y propiedades inseguras, y texto literal en todas las vistas', async () => {
+    const carpeta = await mkdtemp(join(dir, "texto-"));
+    const p = await page(await newContext(carpeta));
+    await rechazarI2(p, respaldoI2(obj => { obj.datos.clientes[0].id = 'cliente" extra="ficticio'; }), /Identificador inválido/);
+    await rechazarI2(p, respaldoI2(obj => { obj.datos.clientes[0].img = { url: 'https://example.invalid/ficticia.svg' }; }), /Estructura inválida.*img/);
+    await rechazarI2(p, respaldoI2(obj => { obj.datos.ajustes = JSON.parse('{"__proto__":{"ficticio":true}}'); }), /Estructura inválida/);
+    await rechazarI2(p, respaldoI2(obj => {
+      obj.imagenes.pedido = dataSvg('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><script/></svg>');
+    }), /SVG con contenido activo/);
+    const texto = '<b data-marca-ficticia="1">detalle ficticio</b>';
+    await importarI2(p, respaldoI2(obj => {
+      obj.datos.clientes[0].nombre = '=1+1';
+      obj.datos.clientes[0].req = { notas: texto, extras: ['marca'] };
+      obj.datos.ajustes.detalles = [{ k: 'marca', n: texto, p: 'todo' }];
+    }));
+    await p.view('pedidos');
+    assert.equal(await p.evaluate("document.querySelector('[data-ex=marca]').textContent"), texto);
+    await p.view('produccion');
+    assert.equal(await p.evaluate('document.querySelector("[data-marca-ficticia]")'), null);
+    assert.ok(await p.evaluate(`document.querySelector('#v-produccion').textContent.includes(${JSON.stringify(texto)})`));
+    // La hoja generada y el CSV también conservan el texto sin interpretarlo como código.
+    await p.click('#dlHoja');
+    const hoja = await download('hoja-produccion-', carpeta);
+    const html = await readFile(hoja, 'utf8');
+    assert.match(html, /&lt;b data-marca-ficticia=/);
+    assert.doesNotMatch(html, /<b data-marca-ficticia=/);
+    await p.view('resumen');
+    await p.click('#exportar');
+    const csv = await download('montajes-', carpeta);
+    assert.match(await readFile(csv, 'utf8'), /'=1\+1;/);
+  });
 } finally {
   process.exitCode = failures ? 1 : process.exitCode;
   if (chrome.pid) {
@@ -553,5 +978,5 @@ try {
     await chromeClosed;
   }
   server.close();
-  await rm(dir, { recursive: true, force: true });
+  await rm(dir, { recursive: true, force: true, maxRetries: 5 });
 }
