@@ -24,3 +24,10 @@
 - Se confirma la escritura antes de publicar cambios en el historial o vaciar pedidos. Los errores muestran el resultado y conservan los cambios pendientes para reintentar.
 - Se adelanta la escritura al ocultar la página, recargarla o cerrarla. Cuando quedan cambios en memoria, la aplicación solicita al navegador un aviso de salida.
 - La batería de regresión de Chromium cubrió cuotas, reintentos, cambios de historial, recarga y cierre normal. El adaptador opcional se comprobó con un simulador, con las integraciones reales de Claude pendientes.
+
+## 2026-11-25 — Respaldos y restauración segura (I2)
+
+- Base `db3fc4d` verificada en origin/main. Versión 1.28.5 en `codex/i2-respaldos-seguros`.
+- El formato 1 conserva ajustes, portadas, lote activo e imágenes. La app valida el contenido antes de importar y comprueba las escrituras antes de confirmar. La repetición de una copia no duplica lotes ni imágenes.
+- La copia previa y el diario de IndexedDB permiten recuperar el estado anterior. Los pedidos importados quedan aislados de los lotes previos. Se protege el texto importado en vistas, hojas HTML y CSV.
+- Pasaron 28 comprobaciones en Chromium con datos ficticios, incluidas las 15 de I0/I1. La importación se validó en almacenamiento local por HTTP de loopback. La política del entorno bloqueó `file://` y el servicio real de Claude quedó fuera de la prueba.
