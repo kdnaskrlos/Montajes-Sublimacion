@@ -8,7 +8,14 @@ HTML/CSS/JS nativo, 4 vistas (Pedidos, Resumen, Producción, Historial), 16 tall
 ## Evidencia inicial
 - Node --check: JavaScript sintácticamente válido.
 - Pruebas aisladas ejecutadas en Node con funciones originales: 3 franelas + 2 suéteres + 1 short (2 piezas) = 22; valor negativo -2 en franelas se incluye y reduce total a 2; conversión de 3 mangas a pares da 1.5 y alerta de entero; frente + espalda + mangas chemis genera aviso erróneo de falta de mangas.
-- Chromium del entorno bloqueó navegación por política; no se certifican flujos completos de interfaz, impresión, almacenamiento ni restauración. Se requieren pruebas de navegador con datos ficticios.
+- Durante la configuración del entorno se verificaron en Chromium las cuatro vistas, tres franelas talla M (12 piezas) y la persistencia del pedido al recargar. La apertura directa con `file://` quedó bloqueada por la política del navegador. Las comprobaciones de I0 usaron HTTP local.
+
+## Validación de I0
+- **Exitosas.** Carga de SVG ficticio, lectura desde IndexedDB y recuperación tras recargar. Creación de lote, carga de su pedido con imagen desde Historial y eliminación persistente. Descarga de respaldo JSON formato 1 e importación en un perfil limpio, con recuperación de las imágenes del pedido y del lote después de recargar. Generación y descarga de la hoja HTML con imagen, invocación de imprimir desde la aplicación y comprobación del nombre y cantidad en el PDF generado por Chromium.
+- **Fallida, reproducida de forma controlada.** Con «Vaciar los pedidos» marcado y `QuotaExceededError` solo en `montajes-lotes`, la interfaz confirmó que el lote se guardó y persistió los pedidos vacíos. Tras recargar, el lote y el pedido ficticio se habían perdido.
+- **No ejecutadas.** Diálogo nativo de impresión, impresora física y comprobación visual de recortes o paginación con varios clientes. La prueba sustituyó el diálogo por una comprobación de la llamada y generó el PDF desde el HTML descargado. Los servicios opcionales de Claude quedaron fuera del flujo local.
+
+Comando y alcance de las pruebas en [tests/README.md](../tests/README.md).
 
 ## Hallazgos y prioridades
 P0: guardarLotesLocal silencia errores (líneas 1083–1103): posible vaciado de pedidos tras guardado fallido; guardar marca dirty=false aun si falla almacenamiento local; guardado diferido 700/1200 ms sin vaciado al cerrar; respaldo no conserva loteActivo/portadaCli, ignora fallos de imágenes y lotes, valida estructura superficialmente y puede mantener vínculo anterior de lote activo al importar. Evitar falsas confirmaciones de éxito y pérdidas.
@@ -17,7 +24,7 @@ P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pu
 P2: estados definidos pero sin interfaz, campo diseño residual, funciones/estilos sin uso, accesibilidad y rendimiento de rerender; revisar mejoras de flujo solo tras estabilidad.
 
 ## Hoja de ruta
-I0: base intacta importada y hash verificado; pendiente configurar Codex y preparar pruebas de referencia sin tocar HTML (esfuerzo medio).
+I0: entorno Codex configurado y batería de referencia ejecutada con datos ficticios. HTML base v1.28.3 intacto.
 I1: guardado de pedidos y lotes seguro; fallo simulado no puede vaciar pedidos ni informar éxito (alto).
 I2: respaldo/restauración segura, validación y aislamiento de lote activo; imágenes verificadas y compatibilidad formato 1 (alto).
 I3: integridad de cantidades, conversiones y alertas, pruebas de reglas de producción (alto).
@@ -26,4 +33,4 @@ I5: impresión sin recortes, experiencia móvil/escritorio, accesibilidad (medio
 I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar IndexedDB para datos si límites/volumen lo justifican; no nube por defecto.
 
 ## Próxima acción
-Crear entorno independiente de Codex con acceso a este repositorio. Codex inicia I0, prepara pruebas de referencia y entrega evidencia; no corrige hallazgos todavía. Entorno y pruebas integrales pendientes.
+En I1, usar la simulación de cuota de I0 para comprobar que el guardado fallido conserva los pedidos e informa el error.
