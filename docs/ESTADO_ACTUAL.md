@@ -1,8 +1,8 @@
 # Estado actual
-Fecha: 2026-11-25. Versión base: 1.28.3. Repositorio privado verificado: kdnaskrlos/Montajes-Sublimacion. Rama base: main.
+Fecha: 2026-11-25. Versión de I1: 1.28.4. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Rama base: main.
 
 ## Base técnica
-Archivo único Montajes-Sublimacion.html, 157199 bytes. SHA-256 original: `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob verificado tras importar: `08e8e63def45fb35c48a550a91507df3c8015634`, idéntico al original. Commit de importación: `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
+Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
 HTML/CSS/JS nativo, 4 vistas (Pedidos, Resumen, Producción, Historial), 16 tallas y 10 categorías. Datos en localStorage (montajes-sub, montajes-lotes, montajes-tema), imágenes en IndexedDB (montajes-img/img). Adaptadores de Claude opcionales (window.claude.use: db, assets, downloads). Fuente remota Google Fonts. Sin Firebase independiente ni servidor necesario.
 
 ## Evidencia inicial
@@ -17,15 +17,21 @@ HTML/CSS/JS nativo, 4 vistas (Pedidos, Resumen, Producción, Historial), 16 tall
 
 Comando y alcance de las pruebas en [tests/README.md](../tests/README.md).
 
+## Validación de I1
+
+- El historial muestra la última escritura confirmada. Si falla el guardado de un lote, se conservan pedidos y formulario para reintentar. El vaciado opcional se refleja después de que se escriben tanto el lote como los pedidos vacíos.
+- Los autosalvados fallidos de pedidos y lotes conservan las ediciones en memoria y muestran **Reintentar guardado**. Ocultar la página, recargarla o cerrarla dispara un intento inmediato. Si quedan cambios en memoria, la aplicación solicita el aviso de salida que admita el navegador.
+- Chromium verificó fallos simulados de cuota, reintentos, historial, vaciado, recarga y cierre normal. Un adaptador simulado verificó rechazos y ediciones concurrentes durante la escritura. El servicio real de Claude y los cierres forzados quedaron fuera de estas pruebas.
+
 ## Hallazgos y prioridades
-P0: guardarLotesLocal silencia errores (líneas 1083–1103): posible vaciado de pedidos tras guardado fallido; guardar marca dirty=false aun si falla almacenamiento local; guardado diferido 700/1200 ms sin vaciado al cerrar; respaldo no conserva loteActivo/portadaCli, ignora fallos de imágenes y lotes, valida estructura superficialmente y puede mantener vínculo anterior de lote activo al importar. Evitar falsas confirmaciones de éxito y pérdidas.
-P0: cantidades negativas/decimales llegan a totales, exportaciones y lotes; conversiones pares/unidades y shorts/piezas pueden producir fracciones. Proteger consistencia, confirmar reglas para sobrantes y chemis (líneas 643–685, 1161–1203).
-P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pueden afectar múltiples lotes incluso desde historial (1274–1285); deshacer no incluye LOTES ni portadaCli; imágenes huérfanas sin limpieza; dos pestañas pueden sobrescribir datos; JSON importado puede contener valores maliciosos no escapados en plantillas HTML; CSV con nombre de fórmula; hoja de impresión puede recortar indicaciones por altura fija; renombrar cliente no refresca todas las vistas al momento; fecha de entrega no validada contra fecha de pedido.
+P0: el respaldo no conserva loteActivo/portadaCli, ignora fallos de imágenes, valida la estructura superficialmente y puede mantener el vínculo anterior de lote activo al importar. La importación informa si falla la escritura de lotes. Queda pendiente asegurar la restauración de imágenes y datos en I2.
+P0: cantidades negativas/decimales llegan a totales, exportaciones y lotes; conversiones pares/unidades y shorts/piezas pueden producir fracciones. Proteger consistencia y confirmar reglas para sobrantes y chemis.
+P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pueden afectar múltiples lotes incluso desde historial; deshacer no incluye LOTES ni portadaCli; imágenes huérfanas sin limpieza; dos pestañas pueden sobrescribir datos; JSON importado puede contener valores maliciosos no escapados en plantillas HTML; CSV con nombre de fórmula; hoja de impresión puede recortar indicaciones por altura fija; renombrar cliente no refresca todas las vistas al momento; fecha de entrega no validada contra fecha de pedido.
 P2: estados definidos pero sin interfaz, campo diseño residual, funciones/estilos sin uso, accesibilidad y rendimiento de rerender; revisar mejoras de flujo solo tras estabilidad.
 
 ## Hoja de ruta
 I0: entorno Codex configurado y batería de referencia ejecutada con datos ficticios. HTML base v1.28.3 intacto.
-I1: guardado de pedidos y lotes seguro; fallo simulado no puede vaciar pedidos ni informar éxito (alto).
+I1: guardado seguro de pedidos y lotes implementado y verificado en `codex/i1-guardado-seguro`, desde `d4a9930`. Pendiente revisión para incorporar a main.
 I2: respaldo/restauración segura, validación y aislamiento de lote activo; imágenes verificadas y compatibilidad formato 1 (alto).
 I3: integridad de cantidades, conversiones y alertas, pruebas de reglas de producción (alto).
 I4: aislamiento historial, deshacer y consistencia entre vistas; protección de importaciones y exportaciones (alto, dividir si es necesario).
@@ -33,4 +39,4 @@ I5: impresión sin recortes, experiencia móvil/escritorio, accesibilidad (medio
 I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar IndexedDB para datos si límites/volumen lo justifican; no nube por defecto.
 
 ## Próxima acción
-En I1, usar la simulación de cuota de I0 para comprobar que el guardado fallido conserva los pedidos e informa el error.
+Revisar el Pull Request de I1. Después de su integración autorizada, abordar la restauración segura en I2.
