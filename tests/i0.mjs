@@ -12,7 +12,9 @@ const app = await readFile(new URL('../Montajes-Sublimacion.html', import.meta.u
 let sheet;
 const server = createServer((req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
-  const html = path === '/app' ? app : path === '/hoja' ? sheet : null;
+  const html = path === '/app' ? app :
+    path === '/app-remota' ? app.toString('utf8').replace('<script>', `<script>\n${remoteAdapter}\n`) :
+    path === '/hoja' ? sheet : null;
   res.writeHead(html ? 200 : 404, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
 });
@@ -88,7 +90,7 @@ async function page(context, path = '/app') {
     const result = await command('Page.navigate', { url });
     assert.equal(result.errorText, undefined);
     await wait(`location.href === ${JSON.stringify(url)}`);
-    await wait(path === '/app' ? "Boolean(document.querySelector('#save.ok'))" : "document.readyState === 'complete' && !!document.querySelector('h1')");
+    await wait(path.startsWith('/app') ? "Boolean(document.querySelector('#save.ok'))" : "document.readyState === 'complete' && !!document.querySelector('h1')");
   };
   await command('Network.enable');
   await command('Network.setBlockedURLs', { urls: ['https://fonts.googleapis.com/*', 'https://fonts.gstatic.com/*'] });
@@ -126,21 +128,21 @@ const imageReady = selector =>
   `[...document.querySelectorAll(${JSON.stringify(selector)})].some(img => img.complete && img.naturalWidth > 0)`;
 
 async function seedOrder(p) {
-  await p.evaluate(`
+  await p.evaluate(`{
     document.querySelector('#newName').value = 'CLIENTE FICTICIO I0';
     document.querySelector('#addForm').requestSubmit();
     const input = document.querySelector('#c-M-SM');
     input.value = '2';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-  `);
+  }`);
   await p.wait("JSON.parse(localStorage.getItem('montajes-sub'))?.clientes[0]?.q.M?.SM === 2");
 }
 
-async function saveLot(p, name) {
+async function saveLot(p, name, empty = true) {
   await p.click('#btnLote');
   await p.evaluate(`
     document.querySelector('#l-nombre').value = ${JSON.stringify(name)};
-    document.querySelector('#l-vaciar').checked = true;
+    document.querySelector('#l-vaciar').checked = ${empty};
     document.querySelector('#fLote').requestSubmit();
   `);
 }
@@ -148,13 +150,67 @@ async function saveLot(p, name) {
 let failures = 0;
 async function check(name, run) {
   try {
-    const outcome = await run();
-    console.log(outcome === 'known defect' ? 'FALLO CONOCIDO REPRODUCIDO · ' + name : 'OK · ' + name);
+    await run();
+    console.log('OK · ' + name);
   } catch (error) {
     failures++;
     console.error('FALLO · ' + name, error);
   }
 }
+
+const stored = key => `JSON.parse(localStorage.getItem(${JSON.stringify(key)}))`;
+const orderQuantity = `${stored('montajes-sub')}?.clientes[0]?.q.M?.SM`;
+const lotQuantity = `${stored('montajes-lotes')}?.[0]?.clientes[0]?.q.M?.SM`;
+const editQuantity = value => `{
+  const input = document.querySelector('#c-M-SM');
+  input.value = ${JSON.stringify(String(value))};
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}`;
+const beforeUnload = "window.dispatchEvent(new Event('beforeunload', { cancelable: true }))";
+
+async function blockWrite(p, key) {
+  await p.evaluate(`
+    window.blockedStorageKey = ${JSON.stringify(key)};
+    window.rejectedWrites = 0;
+    window.originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (this === localStorage && key === window.blockedStorageKey) {
+        window.rejectedWrites++;
+        throw new DOMException('Cuota ficticia', 'QuotaExceededError');
+      }
+      return window.originalSetItem.call(this, key, value);
+    };
+  `);
+}
+
+const unblockWrite = p => p.evaluate('window.blockedStorageKey = null');
+
+const remoteAdapter = `{
+  window.remoteWrites = [];
+  window.remoteOrders = { clientes: [{ id: 'ficticio', nombre: 'PEDIDO FICTICIO', q: { M: { SM: 2 } } }] };
+  window.remoteLots = [];
+  const write = (type, id, data) => new Promise((resolve, reject) => {
+    window.remoteWrites.push({
+      type, data, accept() {
+        if (type === 'orders') window.remoteOrders = data;
+        else window.remoteLots.push({ id, ...data });
+        resolve();
+      },
+      fail: () => reject(new Error('Rechazo ficticio del adaptador')),
+    });
+  });
+  const db = {
+    doc: () => ({
+      onSnapshot: callback => queueMicrotask(() => callback({ exists: true, data: () => window.remoteOrders })),
+      set: data => write('orders', null, data),
+    }),
+    collection: () => ({
+      onSnapshot: callback => queueMicrotask(() => callback({ docs: [] })),
+      doc: id => ({ set: data => write('lots', id, data) }),
+    }),
+  };
+  window.claude = { use: async name => name === 'db' ? db : null };
+}`;
 
 const lotName = 'LOTE FICTICIO I0';
 const imageFile = join(dir, 'referencia-ficticia.svg');
@@ -278,32 +334,217 @@ try {
   await check('Cuota agotada al guardar lote con la opción de vaciar pedidos', async () => {
     const isolated = await page(await newContext());
     await seedOrder(isolated);
-    await isolated.evaluate(`
-      const setItem = Storage.prototype.setItem;
-      window.i0RejectedWrites = 0;
-      Storage.prototype.setItem = function (key, value) {
-        if (this === localStorage && key === 'montajes-lotes') {
-          window.i0RejectedWrites++;
-          throw new DOMException('Cuota ficticia de I0', 'QuotaExceededError');
-        }
-        return setItem.call(this, key, value);
-      };
-    `);
+    await blockWrite(isolated, 'montajes-lotes');
     await saveLot(isolated, 'FALLO FICTICIO I0');
-    assert.equal(await isolated.evaluate('window.i0RejectedWrites'), 1);
+    await isolated.wait("!document.querySelector('#l-error').hidden");
+    assert.equal(await isolated.evaluate('window.rejectedWrites'), 1);
     const message = await isolated.evaluate("document.querySelector('.toast')?.textContent");
+    assert.match(message, /No se pudo guardar el lote/);
+    assert.equal(await isolated.evaluate("document.querySelector('#l-nombre').value"), 'FALLO FICTICIO I0');
+    assert.equal(await isolated.evaluate("document.querySelector('#l-vaciar').checked"), true);
     assert.equal(await isolated.evaluate("localStorage.getItem('montajes-lotes')"), null);
+    assert.equal(await isolated.evaluate(beforeUnload), false, 'Debe advertir antes de descartar el intento');
     await isolated.wait("document.querySelector('#save.ok')");
     await isolated.navigate();
-    const clients = await isolated.evaluate("JSON.parse(localStorage.getItem('montajes-sub')).clientes");
     await isolated.view('historial');
     assert.equal(await isolated.evaluate("document.querySelectorAll('.lote').length"), 0);
-    if (clients.length === 0 && message.includes('guardado.')) {
-      console.log('  El lote desapareció al recargar, los pedidos quedaron vacíos y la interfaz había informado éxito.');
-      return 'known defect';
-    }
-    assert.equal(clients[0]?.q.M?.SM, 2, 'El pedido original debe seguir guardado');
-    assert.ok(message && !message.includes('guardado.'), 'La interfaz debe informar el fallo');
+    assert.equal(await isolated.evaluate(orderQuantity), 2, 'El pedido original debe seguir guardado');
+  });
+
+  await check('Pedidos pendientes tras un fallo y reintento con el último cambio', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    const original = await isolated.evaluate("localStorage.getItem('montajes-sub')");
+    await blockWrite(isolated, 'montajes-sub');
+    await isolated.evaluate(editQuantity(4));
+    await isolated.wait("document.querySelector('#save.bad') && !document.querySelector('#reintentarGuardar').hidden");
+    assert.match(await isolated.evaluate("document.querySelector('#save').textContent"), /No se pudieron guardar los pedidos/);
+    assert.equal(await isolated.evaluate("localStorage.getItem('montajes-sub')"), original);
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '4');
+    assert.equal(await isolated.evaluate(beforeUnload), false);
+    await isolated.evaluate(editQuantity(5));
+    await unblockWrite(isolated);
+    await isolated.click('#reintentarGuardar');
+    await isolated.wait(`${orderQuantity} === 5 && document.querySelector('#save.ok')`);
+    await isolated.navigate();
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '5');
+  });
+
+  await check('Lote en curso conserva su versión guardada y admite reintento', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    await saveLot(isolated, 'LOTE EN CURSO', false);
+    await isolated.wait(`${lotQuantity} === 2 && document.querySelector('#save.ok')`);
+    const original = await isolated.evaluate("localStorage.getItem('montajes-lotes')");
+    await blockWrite(isolated, 'montajes-lotes');
+    await isolated.evaluate(editQuantity(4));
+    await isolated.wait("document.querySelector('#save.bad') && document.querySelector('#lotePill.err')");
+    assert.equal(await isolated.evaluate(orderQuantity), 4);
+    assert.equal(await isolated.evaluate("localStorage.getItem('montajes-lotes')"), original);
+    await isolated.view('historial');
+    assert.equal(await isolated.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '4');
+    await unblockWrite(isolated);
+    await isolated.click('#reintentarGuardar');
+    await isolated.wait(`${lotQuantity} === 4 && document.querySelector('#save.ok')`);
+    await isolated.navigate();
+    await isolated.view('historial');
+    assert.equal(await isolated.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '8');
+  });
+
+  await check('Sobrescritura rechazada conserva lote y pedidos hasta confirmar el reintento', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    await saveLot(isolated, 'LOTE FICTICIO PARA SOBRESCRIBIR');
+    await isolated.wait(`${stored('montajes-sub')}.clientes.length === 0`);
+    const original = await isolated.evaluate(stored('montajes-lotes'));
+    await seedOrder(isolated);
+    await isolated.evaluate(editQuantity(3));
+    await isolated.wait(`${orderQuantity} === 3`);
+    await blockWrite(isolated, 'montajes-lotes');
+    await saveLot(isolated, original[0].nombre);
+    await isolated.click('#l-sob');
+    await isolated.wait("!document.querySelector('#l-error').hidden");
+    assert.deepEqual(await isolated.evaluate(stored('montajes-lotes')), original);
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '3');
+    await unblockWrite(isolated);
+    await isolated.click('#l-sob');
+    await isolated.wait(`${stored('montajes-sub')}.clientes.length === 0 && document.querySelector('#loteForm').hidden`);
+    const saved = await isolated.evaluate(stored('montajes-lotes'));
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].id, original[0].id);
+    assert.equal(saved[0].clientes[0].q.M.SM, 3);
+  });
+
+  await check('Si se guarda el lote pero falla el vaciado, los pedidos siguen disponibles', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    await blockWrite(isolated, 'montajes-sub');
+    await isolated.evaluate(editQuantity(4));
+    await saveLot(isolated, 'LOTE CON VACIADO RECHAZADO');
+    await isolated.wait("document.querySelector('#loteForm').hidden && document.querySelector('#save.bad')");
+    assert.match(await isolated.evaluate("document.querySelector('#toast').textContent"), /guardado.*No se pudieron vaciar los pedidos/);
+    assert.equal(await isolated.evaluate(lotQuantity), 4);
+    assert.equal(await isolated.evaluate(orderQuantity), 2);
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '4');
+    await unblockWrite(isolated);
+    await isolated.click('#reintentarGuardar');
+    await isolated.wait(`${orderQuantity} === 4 && document.querySelector('#save.ok')`);
+  });
+
+  await check('Renombrar o eliminar con escritura rechazada conserva el historial y permite reintentar', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    await saveLot(isolated, 'LOTE PARA EDITAR');
+    await isolated.wait(`${lotQuantity} === 2 && document.querySelector('#loteForm').hidden`);
+    await isolated.view('historial');
+    const original = await isolated.evaluate("localStorage.getItem('montajes-lotes')");
+    await blockWrite(isolated, 'montajes-lotes');
+    await isolated.evaluate(`{
+      document.querySelector('.lote h3').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      const input = document.querySelector('#lrenIn');
+      input.value = 'NUEVO NOMBRE FICTICIO';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }`);
+    await isolated.click('#lrenOk');
+    await isolated.wait("document.querySelector('#toast').textContent.includes('No se pudo cambiar')");
+    assert.equal(await isolated.evaluate("localStorage.getItem('montajes-lotes')"), original);
+    assert.equal(await isolated.evaluate("document.querySelector('#lrenIn').value"), 'NUEVO NOMBRE FICTICIO');
+    await unblockWrite(isolated);
+    await isolated.click('#lrenOk');
+    await isolated.wait("document.querySelector('.lote h3')?.textContent === 'NUEVO NOMBRE FICTICIO'");
+    await isolated.evaluate("window.blockedStorageKey = 'montajes-lotes'");
+    await isolated.click('[data-la="borrar"]');
+    await isolated.click('[data-ld]');
+    await isolated.wait("document.querySelector('#toast').textContent.includes('No se pudo eliminar')");
+    assert.equal(await isolated.evaluate(`${stored('montajes-lotes')}[0].nombre`), 'NUEVO NOMBRE FICTICIO');
+    assert.equal(await isolated.evaluate("document.querySelectorAll('.lote').length"), 1);
+    await unblockWrite(isolated);
+    await isolated.click('[data-ld]');
+    await isolated.wait(`${stored('montajes-lotes')}.length === 0 && !document.querySelector('.lote')`);
+  });
+
+  await check('La imagen de un lote sigue visible tras un fallo y el reintento aplica el cambio', async () => {
+    const isolated = await page(await newContext());
+    await seedOrder(isolated);
+    await isolated.upload('#fileImg', imageFile);
+    await isolated.wait(`${stored('montajes-sub')}?.clientes[0]?.img?.lid`);
+    await saveLot(isolated, 'LOTE CON IMAGEN FICTICIA');
+    await isolated.wait("document.querySelector('#loteForm').hidden");
+    await isolated.view('historial');
+    await isolated.wait(imageReady('.lthumb img'));
+    const original = await isolated.evaluate("localStorage.getItem('montajes-lotes')");
+    await blockWrite(isolated, 'montajes-lotes');
+    await isolated.click('[data-pdel]');
+    await isolated.wait("document.querySelector('#save.bad')");
+    assert.equal(await isolated.evaluate("localStorage.getItem('montajes-lotes')"), original);
+    assert.equal(await isolated.evaluate("Boolean(document.querySelector('.lthumb img'))"), true);
+    await unblockWrite(isolated);
+    await isolated.click('#reintentarGuardar');
+    await isolated.wait(`${stored('montajes-lotes')}[0].clientes[0].imgProd.none && !document.querySelector('.lthumb img')`);
+  });
+
+  await check('Recarga inmediata y cierre vacían los guardados diferidos de pedidos y lote', async () => {
+    const context = await newContext();
+    const isolated = await page(context);
+    await seedOrder(isolated);
+    await saveLot(isolated, 'LOTE DEL CICLO DE VIDA', false);
+    await isolated.wait("document.querySelector('#save.ok')");
+    assert.equal(await isolated.evaluate(`${editQuantity(6)} ${orderQuantity}`), 2);
+    await isolated.navigate();
+    assert.equal(await isolated.evaluate(orderQuantity), 6);
+    assert.equal(await isolated.evaluate(lotQuantity), 6);
+    await isolated.evaluate(`${editQuantity(7)}
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.visibilityState;
+    `);
+    assert.equal(await isolated.evaluate(orderQuantity), 7);
+    assert.equal(await isolated.evaluate(lotQuantity), 7);
+    assert.equal(await isolated.evaluate(`${editQuantity(8)} ${orderQuantity}`), 7);
+    await isolated.command('Page.close');
+    const reopened = await page(context);
+    assert.equal(await reopened.evaluate(orderQuantity), 8);
+    assert.equal(await reopened.evaluate(lotQuantity), 8);
+  });
+
+  await check('El adaptador asíncrono conserva la edición posterior y permite reintentar un rechazo', async () => {
+    const isolated = await page(await newContext(), '/app-remota');
+    await isolated.evaluate(editQuantity(4));
+    await isolated.wait('window.remoteWrites.length === 1');
+    await isolated.evaluate(`${editQuantity(5)} window.remoteWrites[0].accept()`);
+    await isolated.wait('window.remoteWrites.length === 2');
+    assert.equal(await isolated.evaluate('window.remoteOrders.clientes[0].q.M.SM'), 4);
+    assert.equal(await isolated.evaluate('window.remoteWrites[1].data.clientes[0].q.M.SM'), 5);
+    assert.equal(await isolated.evaluate("Boolean(document.querySelector('#save.ok'))"), false);
+    await isolated.evaluate('window.remoteWrites[1].fail()');
+    await isolated.wait("document.querySelector('#save.bad') && !document.querySelector('#reintentarGuardar').hidden");
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '5');
+    await isolated.click('#reintentarGuardar');
+    await isolated.wait('window.remoteWrites.length === 3');
+    await isolated.evaluate('window.remoteWrites[2].accept()');
+    await isolated.wait("document.querySelector('#save.ok')");
+    assert.equal(await isolated.evaluate('window.remoteOrders.clientes[0].q.M.SM'), 5);
+  });
+
+  await check('Confirmar un lote asíncrono preserva los pedidos editados durante la escritura', async () => {
+    const isolated = await page(await newContext(), '/app-remota');
+    await saveLot(isolated, 'LOTE ASÍNCRONO');
+    await isolated.wait('window.remoteWrites.length === 1');
+    assert.equal(await isolated.evaluate('window.remoteWrites[0].type'), 'lots');
+    await isolated.evaluate(`
+      ${editQuantity(3)}
+      document.querySelector('#fLote').requestSubmit();
+      window.remoteWrites[0].accept();
+    `);
+    await isolated.wait("document.querySelector('#loteForm').hidden");
+    assert.match(await isolated.evaluate("document.querySelector('#toast').textContent"), /Se conservaron los cambios/);
+    assert.equal(await isolated.evaluate("document.querySelector('#c-M-SM').value"), '3');
+    await isolated.wait('window.remoteWrites.length === 2');
+    assert.equal(await isolated.evaluate('window.remoteWrites[1].type'), 'orders');
+    await isolated.evaluate('window.remoteWrites[1].accept()');
+    await isolated.wait("document.querySelector('#save.ok')");
+    assert.equal(await isolated.evaluate('window.remoteLots.length'), 1);
+    assert.equal(await isolated.evaluate('window.remoteOrders.clientes[0].q.M.SM'), 3);
   });
 } finally {
   process.exitCode = failures ? 1 : process.exitCode;

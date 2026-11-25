@@ -17,3 +17,10 @@
 - Fallo reproducido: al rechazar la escritura del lote por cuota con el vaciado activado, la app indicó éxito. Tras recargar habían desaparecido tanto el lote como el pedido.
 - No ejecutados: diálogo nativo, impresora física, revisión visual de recortes y paginación de varios clientes, e integraciones de Claude.
 - Se añadió una prueba reproducible de desarrollo. Se conservó el HTML v1.28.3 y su hash.
+
+## 2026-11-25 — Guardado seguro de pedidos y lotes (I1)
+
+- Base `d4a9930` verificada en origin/main. Corrección en `codex/i1-guardado-seguro`, versión 1.28.4.
+- Se confirma la escritura antes de publicar cambios en el historial o vaciar pedidos. Los errores muestran el resultado y conservan los cambios pendientes para reintentar.
+- Se adelanta la escritura al ocultar la página, recargarla o cerrarla. Cuando quedan cambios en memoria, la aplicación solicita al navegador un aviso de salida.
+- La batería de regresión de Chromium cubrió cuotas, reintentos, cambios de historial, recarga y cierre normal. El adaptador opcional se comprobó con un simulador, con las integraciones reales de Claude pendientes.
