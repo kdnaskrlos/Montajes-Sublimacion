@@ -43,3 +43,8 @@
 - Se verificó la integración del PR #4 en `main` (`de39965`) y se prepararon las instrucciones en `codex/distribucion-v1.29.0`.
 - Se confirmó la identidad del HTML con la versión verificada de estabilización. Los archivos del icono, el favicon y el ZIP final dependen del original aprobado, pendiente de recibir.
 - Se repitieron las 35 comprobaciones de regresión con éxito en Chromium por HTTP local.
+
+## Distribución final de 1.29.0
+
+- Se recuperó el PNG definitivo del PR #5 con su transparencia original. Se generó el ICO, se incrustó el favicon y se verificaron el arranque, la decodificación del icono y el contenido del ZIP.
+- La comparación con `de39965` confirmó que el único cambio en el HTML es la etiqueta del favicon. Se conservó la validación funcional previa.
