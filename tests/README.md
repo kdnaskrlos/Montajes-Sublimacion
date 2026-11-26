@@ -1,4 +1,4 @@
-# Regresión de I0 a I4
+# Regresión de I0 a 1.30.0
 
 Desde la raíz del repositorio, con Node.js 18 o superior, Chromium y `pdftotext` (Poppler) disponibles:
 
@@ -19,3 +19,5 @@ I2 verifica la exportación y restauración de pedidos, lotes, ajustes, tema y p
 I3/I4 añade siete comprobaciones de cantidades, conversiones, chemis, datos heredados, aislamiento de lotes y portadas, guardado entre pestañas y legibilidad de indicaciones en el PDF. La última prueba intenta abrir el HTML mediante `file://`. Si Chromium devuelve `ERR_BLOCKED_BY_ADMINISTRATOR`, se informa y se ejecuta el flujo de imágenes, respaldo y PDF por HTTP de loopback.
 
 `OK` indica que la comprobación pasó. Cualquier `FALLO` produce un código de salida distinto de cero.
+
+La versión 1.30.0 adapta las comprobaciones de unidades a las columnas independientes y añade tres casos. Comprueba cada una de las 16 categorías, la combinación de 34 piezas en 5XL en todas las vistas, CSV, hoja y PDF, y la migración de pedidos locales y lotes con modos y cantidades por short distintos. También verifica el icono incrustado y restaura la combinación de 5XL en un perfil limpio.
