@@ -893,8 +893,8 @@ try {
     await importarI2(p, antiguo);
     const [datos, lotes, nuevoTema] = await estadoRespaldo(p);
     assert.equal(JSON.parse(datos).loteActivo, null);
-    assert.equal(JSON.parse(datos).clientes[0].modoManga, 'ind');
-    assert.equal(JSON.parse(datos).clientes[0].q.M.MC, 1);
+    assert.equal(JSON.parse(datos).clientes[0].q.M.MCU, 1);
+    assert.equal(JSON.parse(datos).clientes[0].q.M.MCP, undefined);
     assert.equal(JSON.parse(datos).clientes[0].q.M.L, -1);
     assert.equal(JSON.parse(lotes).length, 2);
     assert.deepEqual(JSON.parse(lotes)[0], previo);
@@ -1000,62 +1000,43 @@ try {
     assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '8');
   });
 
-  await check('I3/I4 · Pares, unidades y shorts conservan piezas o rechazan toda la conversión', async () => {
+  await check('I3/I4 · Pares, unidades y shorts son independientes y conservan el total', async () => {
     const p = await page(await newContext());
     await seedOrder(p);
-    await p.evaluate(editCell('c-M-SH', 2));
-    await p.view('resumen');
-    await p.evaluate(`{
-      const input = document.querySelector('#pzShort');
-      input.value = '2.5';
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      if (input.value !== '2') throw new Error('Se aceptó una configuración decimal');
-      input.value = '3';
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    }`);
-    await p.view('pedidos');
-    await p.click('#m-ind');
-    await p.evaluate(editCell('c-M-MC', 4) + editCell('c-M-ML', 2) + editCell('c-L-MQ', 3));
-    const leer = id => p.evaluate(`document.querySelector('#${id}').value`);
+    assert.equal(await p.evaluate("document.querySelector('#m-par,#m-ind,#s-comp,#s-pz,#pzShort')"), null);
+    await p.evaluate(editCell('c-M-MCP', 1) + editCell('c-M-MCU', 4) +
+      editCell('c-M-MLU', 2) + editCell('c-L-MQU', 3) +
+      editCell('c-M-SHC', 2) + editCell('c-L-SHP', 1));
     const total = () => p.evaluate("document.querySelector('#v-produccion .tot b').textContent");
-    assert.equal(await total(), '19');
-    await p.click('#m-par');
-    assert.match(await p.evaluate(toastText), /Talla L.*manga sin pareja/);
-    assert.equal(await leer('c-M-MC'), '4');
-    assert.equal(await leer('c-L-MQ'), '3');
-    await p.evaluate(editCell('c-L-MQ', 4));
-    await p.click('#m-par');
-    assert.deepEqual(await Promise.all(['c-M-MC', 'c-M-ML', 'c-L-MQ'].map(leer)), ['2', '1', '2']);
     assert.equal(await total(), '20');
-    await p.click('#m-ind');
-    await p.click('#s-pz');
-    assert.deepEqual(await Promise.all(['c-M-MC', 'c-M-ML', 'c-L-MQ', 'c-M-SH'].map(leer)), ['4', '2', '4', '6']);
+    await p.view('resumen');
+    assert.deepEqual(await p.evaluate(`[
+      document.querySelector('#tlt [data-talla=M] [data-rcol=MCp] .pv').textContent,
+      document.querySelector('#tlt [data-talla=M] [data-rcol=MLp] .pv').textContent,
+      document.querySelector('#tlt [data-talla=L] [data-rcol=MQp] .pv').textContent
+    ]`), ['1+4', '0+2', '0+3']);
+    await p.wait(`${stored('montajes-sub')}?.clientes[0]?.q.L?.SHP === 1`);
+    await p.navigate();
     assert.equal(await total(), '20');
-    await p.evaluate(editCell('c-L-SH', 5));
-    await p.click('#s-comp');
-    assert.match(await p.evaluate(toastText), /Talla L.*múltiplo de 3/);
-    assert.equal(await leer('c-M-SH'), '6');
-    await p.evaluate(editCell('c-L-SH', 3));
-    await p.click('#s-comp');
-    assert.deepEqual(await Promise.all(['c-M-SH', 'c-L-SH'].map(leer)), ['2', '1']);
-    assert.equal(await total(), '23');
+    await p.view('pedidos');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MCP').value"), '1');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MCU').value"), '4');
   });
 
   await check('I3/I4 · Chemis se reconoce sin reclasificar sus mangas como estándar', async () => {
     const p = await page(await newContext());
     await seedOrder(p);
-    await p.evaluate(editCell('c-M-F', 2) + editCell('c-M-E', 2) + editCell('c-M-MQ', 2));
+    await p.evaluate(editCell('c-M-F', 2) + editCell('c-M-E', 2) + editCell('c-M-MQP', 2));
     const alertas = () => p.evaluate("document.querySelector('#ed-alertas').textContent");
     assert.match(await alertas(), /4 mangas chemis.*2 prenda/);
     assert.doesNotMatch(await alertas(), /sin mangas|Convertir en franelillas|Convertir en completas/);
-    await p.evaluate(editCell('c-M-MC', 1));
+    await p.evaluate(editCell('c-M-MCP', 1));
     await p.click('[data-fix="M"]');
     assert.equal(await p.evaluate("document.querySelector('#c-M-C').value"), '1');
-    assert.equal(await p.evaluate("document.querySelector('#c-M-MQ').value"), '2');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MQP').value"), '2');
     assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '14');
-    await p.click('#m-ind');
-    await p.evaluate(editCell('c-M-MQ', 1));
-    assert.match(await alertas(), /manga corta chemis suelta.*falta la otra manga/);
+    await p.evaluate(editCell('c-M-MQP', 0) + editCell('c-M-MQU', 1));
+    assert.match(await alertas(), /Mangas cortas chemis, 1 en unidades sueltas.*falta la otra manga/);
   });
 
   await check('I3/I4 · Datos anteriores recuperables conservan piezas y los valores pendientes bloquean la producción', async () => {
@@ -1072,8 +1053,8 @@ try {
     assert.match(await p.evaluate("document.querySelector('#modal').textContent"), /12 piezas/);
     await p.click('#rs-no');
     await p.view('pedidos');
-    assert.equal(await p.evaluate("document.querySelector('#c-M-MC').value"), '3');
-    assert.equal(await p.evaluate("document.querySelector('#c-M-SH').value"), '7');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MCU').value"), '3');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-SHP').value"), '7');
     assert.equal(await p.evaluate("document.querySelector('#c-M-F').value"), '-2');
     await p.view('produccion');
     await p.click('#dlHoja');
@@ -1157,6 +1138,162 @@ try {
     await siguiente.evaluate(editQuantity(10));
     await recargada.command('Page.close');
     await siguiente.wait(`${orderQuantity} === 10 && ${lotQuantity} === 10 && document.querySelector('#save.ok')`);
+  });
+
+  const categorias130 = [
+    ['C', 'Franela', '4 piezas', 4, ['Frentes', 'Espaldas', 'Mangas cortas']],
+    ['L', 'Suéter', '4 piezas', 4, ['Frentes', 'Espaldas', 'Mangas largas']],
+    ['FE', 'Frente y espalda', '2 piezas', 2, ['Frentes', 'Espaldas']],
+    ['CH', 'Chemis', '4 piezas', 4, ['Frentes chemis', 'Espaldas chemis', 'Mangas cortas chemis']],
+    ['CHL', 'Chemis suéter', '4 piezas', 4, ['Frentes chemis', 'Espaldas chemis', 'Mangas largas chemis']],
+    ['SM', 'Franelilla', '2 piezas', 2, ['Frentes', 'Espaldas']],
+    ['F', 'Solo frente', '1 pieza', 1, ['Frentes']],
+    ['E', 'Solo espalda', '1 pieza', 1, ['Espaldas']],
+    ['MCP', 'Mangas cortas', 'pares', 2, ['Mangas cortas']],
+    ['MQP', 'Mangas cortas chemis', 'pares', 2, ['Mangas cortas chemis']],
+    ['MLP', 'Mangas largas', 'pares', 2, ['Mangas largas']],
+    ['MCU', 'Mangas cortas', 'unidad', 1, ['Mangas cortas']],
+    ['MQU', 'Mangas cortas chemis', 'unidad', 1, ['Mangas cortas chemis']],
+    ['MLU', 'Mangas largas', 'unidad', 1, ['Mangas largas']],
+    ['SHC', 'Short', '2 piezas', 2, ['Piezas de short']],
+    ['SHP', 'Short', 'pieza', 1, ['Piezas de short']],
+  ];
+
+  await check('1.30.0 · Orden, iconos y piezas físicas de cada una de las 16 categorías', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await p.evaluate(editQuantity(0));
+    assert.deepEqual(await p.evaluate(`[...document.querySelectorAll('#grid [data-col]')].map(th =>
+      [th.dataset.col, th.querySelector('.t').textContent, th.querySelector('.s').textContent])`),
+    categorias130.map(([id, nombre, unidad]) => [id, nombre, unidad]));
+    assert.deepEqual(await p.evaluate(`['MCP','MQP','MLP','MCU','MQU','MLU'].map(k =>
+      document.querySelectorAll('#grid [data-col='+k+'] svg > g').length)`), [2, 2, 2, 0, 0, 0]);
+    assert.equal(await p.evaluate(`['CH','CHL'].every(k =>
+      document.querySelector('#grid [data-col='+k+'] svg path:nth-child(2)').getAttribute('d').includes('M12 6v5'))`), true);
+    const logo = await readFile(new URL('../docs/icono-interno-v1.30.base64', import.meta.url), 'utf8');
+    await p.wait(imageReady('#logo'));
+    assert.equal(await p.evaluate("document.querySelector('#logo').src"), 'data:image/png;base64,' + logo.trim());
+    assert.equal(await p.evaluate(`getComputedStyle(document.querySelector('#logo')).backgroundColor`), 'rgb(0, 0, 0)');
+
+    const piezasTile = ".tile.dark .num";
+    for (const [id, nombre, unidad, total, piezas] of categorias130) {
+      await p.evaluate(editCell('c-M-' + id, 1));
+      assert.equal(await p.evaluate(`document.querySelector('${piezasTile}').textContent`), String(total), id);
+      assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), String(total), id);
+      assert.deepEqual(await p.evaluate(`[...document.querySelectorAll('.pcard .meta .pill:not(.tot)')]
+        .map(pill => pill.textContent.split(':')[0])`), piezas, id);
+      const fila = await p.evaluate("document.querySelector('.ptab tbody tr').textContent");
+      assert.ok(fila.startsWith(nombre), id);
+      if (['pares', 'unidad', 'pieza'].includes(unidad)) assert.ok(fila.includes('(' + unidad + ')'), id);
+      await p.evaluate(editCell('c-M-' + id, 0));
+    }
+  });
+
+  await check('1.30.0 · 34 piezas en 5XL y coherencia entre vistas, respaldo, CSV, hoja y PDF', async () => {
+    const carpeta = await mkdtemp(join(dir, 'prendas-'));
+    const p = await page(await newContext(carpeta));
+    await seedOrder(p);
+    await p.evaluate(editQuantity(0) + categorias130.map(([k]) => editCell('c-5XL-' + k, 1)).join(''));
+    assert.equal(await p.evaluate("document.querySelector('.tile.dark .num').textContent"), '34');
+    const piezas = [5, 5, 2, 2, 5, 5, 5, 2, 3];
+    await p.view('resumen');
+    assert.deepEqual(await p.evaluate(`[...document.querySelector('#v-resumen .rt').tBodies[0].rows[0].cells]
+      .slice(1).map(td => Number(td.textContent))`), [...piezas, 34]);
+    assert.deepEqual(await p.evaluate(`['CLQ','MCp','MLp','MQp','MQLp'].map(k =>
+      document.querySelector('#tlt [data-talla="5XL"] [data-rcol='+k+'] .pv').textContent)`),
+    ['2', '2+1', '2+1', '2+1', '1']);
+    await p.click('#tlt [data-talla="5XL"]');
+    assert.equal(await p.evaluate("document.querySelector('#mt').textContent"), 'Talla 5XL');
+    await p.click('#rs-no');
+    await p.click('#exportar');
+    const csv = await readFile(await download('montajes-', carpeta), 'utf8');
+    const [cabecera, fila] = csv.trim().split('\n').map(line => line.split(';'));
+    assert.equal(fila[3], '5XL');
+    assert.deepEqual(fila.slice(4).map(Number), [...categorias130.map(() => 1), ...piezas, 34]);
+    assert.ok(cabecera.includes('Mangas largas chemis'));
+    assert.ok(cabecera.includes('Mangas cortas chemis (pares)') && cabecera.includes('Mangas cortas chemis (unidad)'));
+
+    await saveLot(p, 'LOTE 5XL', false);
+    await p.wait(`${stored('montajes-lotes')}?.[0]?.resumen.piezas === 34 && document.querySelector('#save.ok')`);
+    await p.view('historial');
+    assert.equal(await p.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '34');
+    await p.click('[data-lv]');
+    assert.match(await p.evaluate("document.querySelector('#modal').textContent"), /34 piezas/);
+    await p.click('#rs-no');
+    await p.click('#resExp');
+    const respaldo = JSON.parse(await readFile(await download('respaldo-montajes-', carpeta), 'utf8'));
+    const destino = await page(await newContext());
+    await importarI2(destino, respaldo);
+    assert.match(await destino.evaluate(toastText), /^Respaldo importado/);
+    assert.equal(await destino.evaluate("document.querySelector('#c-5XL-CHL').value"), '1');
+    assert.equal(await destino.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '34');
+
+    await p.view('produccion');
+    assert.equal(await p.evaluate("document.querySelector('.ptab thead th:nth-child(2)').textContent"), '5XL');
+    assert.equal(await p.evaluate("document.querySelectorAll('.ptab tbody tr').length"), 16);
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '34');
+    await p.evaluate(`document.addEventListener('load', event => {
+      if (event.target instanceof HTMLIFrameElement && event.target.srcdoc) {
+        const frame = event.target;
+        frame.contentWindow.print = () => { window.hojaImpresa = frame.srcdoc; };
+      }
+    }, true)`);
+    await p.click('#prHoja');
+    await p.wait("Boolean(window.hojaImpresa)");
+    await p.click('#dlHoja');
+    sheet = await readFile(await download('hoja-produccion-', carpeta), 'utf8');
+    assert.equal(await p.evaluate('window.hojaImpresa'), sheet);
+    const output = await page(await newContext(), '/hoja');
+    const { data } = await output.command('Page.printToPDF', { preferCSSPageSize: true });
+    const pdf = join(carpeta, '5xl.pdf');
+    await writeFile(pdf, Buffer.from(data, 'base64'));
+    const text = execFileSync('pdftotext', ['-layout', pdf, '-'], { encoding: 'utf8' });
+    assert.match(text, /Total de piezas:\s*34/);
+    assert.match(text, /T-5XL/);
+    assert.match(text, /Mangas largas chemis:\s*2/);
+    assert.match(text, /Mangas cortas chemis\s*(?:\(unidad\)\s+1\s+1|1\s+1\s+\(unidad\))/);
+  });
+
+  await check('1.30.0 · Migra pedidos locales y lotes con modos y piezas por short propios', async () => {
+    const p = await page(await newContext());
+    const pedido = {
+      clientes: [
+        { id: 'pedido-a', nombre: 'PARES Y SHORTS', modoManga: 'par', modoShort: 'comp',
+          q: { M: { MC: 2, MQ: 1, ML: 1, SH: 3 } } },
+        { id: 'pedido-b', nombre: 'UNIDADES Y PIEZAS', modoManga: 'ind', modoShort: 'pz',
+          q: { L: { MC: 4, MQ: 3, ML: 2, SH: 5 } } },
+      ],
+      ajustes: { piezasShort: 3, listas: { tela: ['Tela ficticia'] } },
+    };
+    const lote = {
+      id: 'lote-antiguo', nombre: 'LOTE ANTIGUO', fecha: '2026-11-25', creado: 1795608000000,
+      ajustes: { piezasShort: 5 }, clientes: structuredClone(pedido.clientes),
+      resumen: { piezas: 37 },
+    };
+    await p.evaluate(`{
+      localStorage.setItem('montajes-sub', ${JSON.stringify(JSON.stringify(pedido))});
+      localStorage.setItem('montajes-lotes', ${JSON.stringify(JSON.stringify([lote]))});
+    }`);
+    await p.navigate();
+    assert.equal(await p.evaluate("document.querySelector('.tile.dark .num').textContent"), '31');
+    assert.deepEqual(await p.evaluate(`['MCP','MQP','MLP','SHP','SHC'].map(k =>
+      document.querySelector('#c-M-'+k).value)`), ['2', '1', '1', '9', '']);
+    await p.click('[data-pick="pedido-b"]');
+    assert.deepEqual(await p.evaluate(`['MCU','MQU','MLU','SHP','SHC'].map(k =>
+      document.querySelector('#c-L-'+k).value)`), ['4', '3', '2', '5', '']);
+    await p.view('historial');
+    assert.equal(await p.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '37');
+    await p.click('[data-la=cargar]');
+    await p.click('[data-lc]');
+    await p.wait("!document.querySelector('#v-pedidos').hidden");
+    assert.equal(await p.evaluate("document.querySelector('#c-M-SHP').value"), '15');
+    assert.equal(await p.evaluate("document.querySelector('.tile.dark .num').textContent"), '37');
+    await p.evaluate(editCell('c-M-SHC', 1));
+    assert.equal(await p.evaluate("document.querySelector('.tile.dark .num').textContent"), '39');
+    await p.wait(`${stored('montajes-sub')}?.clientes[0]?.q.M?.SHP === 15 && document.querySelector('#save.ok')`);
+    await p.navigate();
+    assert.equal(await p.evaluate("document.querySelector('.tile.dark .num').textContent"), '39');
+    assert.equal(await p.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '37');
   });
 
   await check('I3/I4 · Imágenes, respaldo y PDF con indicaciones completas', async () => {

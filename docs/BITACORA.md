@@ -48,3 +48,10 @@
 
 - Se recuperó el PNG definitivo del PR #5 con su transparencia original. Se generó el ICO, se incrustó el favicon y se verificaron el arranque, la decodificación del icono y el contenido del ZIP.
 - La comparación con `de39965` confirmó que el único cambio en el HTML es la etiqueta del favicon. Se conservó la validación funcional previa.
+
+## 2026-11-25 — Prendas y distribución 1.30.0
+
+- Se reutilizó la rama `codex/v1.30.0-prendas` desde `18b34e8`, con distribución 1.29.0 ya integrada en `main` en `08f031d`.
+- Se incorporaron las columnas independientes, chemis corta y larga, la talla 5XL y el icono interno aprobado. Cálculos, avisos, historial y exportaciones comparten el conteo físico.
+- Se conservaron los modos históricos y el conteo de shorts con configuraciones antiguas. Se actualizó el ZIP y la documentación de distribución.
+- Pasaron 38 comprobaciones en Chromium, con 34 piezas confirmadas para una unidad de cada categoría en 5XL. Se verificaron la migración, las exportaciones y el contenido del ZIP.
