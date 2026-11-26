@@ -13,6 +13,7 @@
 - Desde 1.30.0, registrar pares y unidades adicionales en columnas independientes. El resumen conserva las unidades sueltas aunque sean un número par. El short completo suma dos piezas y el short por pieza suma una. Los registros anteriores se interpretan con su modo y configuración originales. Si el short antiguo usaba un factor distinto de dos, se conserva la cantidad física en la columna de piezas sueltas.
 - La ficha de producción y las hojas descargables son para corte y costura, sin precios. No alterar imágenes originales del usuario; las imágenes adjuntas son referencias, no originales de impresión.
 - No subir respaldos reales, diseños de clientes, credenciales ni datos de negocio a GitHub. Usar datos ficticios en pruebas. No borrar datos ni cambiar origen de almacenamiento sin ruta de respaldo y restauración comprobada.
+- Configurar en cada clon el correo `noreply` propio de GitHub con `git config --local user.email "<correo noreply>"`, `git config --local user.useConfigOnly true` y `git config --local core.hooksPath .githooks`. Los hooks revisan identidades, mensajes y el historial de salida. Activar también la privacidad del correo y el bloqueo de pushes que lo expongan en la cuenta de GitHub.
 - No modificar el HTML durante la iteración 0. La versión base es v1.28.3.
 
 ## Entrega de cada tarea
