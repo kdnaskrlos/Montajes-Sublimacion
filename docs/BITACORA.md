@@ -64,3 +64,4 @@
 - El formato 1 permite trasladar pedidos, lotes, imágenes y tema entre el HTML descargado y Pages. El producto mantiene las reglas, las vistas y los cálculos de 1.30.0.
 - Pasaron 44 comprobaciones en Chromium, incluidas seis para instalación, uso sin red, actualización y persistencia. Se verificó el workflow con `actionlint`.
 - La revisión de GitHub detectó correos personales en los commits y metadatos de autor en el icono original y los ZIP históricos. Se conserva la visibilidad privada. El alcance y las limitaciones de la auditoría están en [ESTADO_ACTUAL.md](ESTADO_ACTUAL.md).
+- El PR #7 quedó abierto para revisión. GitHub Actions confirmó las 44 pruebas y la apertura del HTML con `file://`.

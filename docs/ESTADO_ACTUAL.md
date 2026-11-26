@@ -75,6 +75,7 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 - Pages usa el prefijo `Montajes-Sublimacion:` en localStorage, IndexedDB y Web Locks. El HTML descargado conserva sus identificadores originales. La migración entre orígenes se hace con **Exportar respaldo** e **Importar respaldo**, en formato 1. La aplicación y el flujo de publicación carecen de un servidor de datos. El prefijo evita colisiones accidentales en el mismo origen, donde el navegador comparte permisos entre aplicaciones.
 - GitHub Actions valida los PR y `main`, y prepara el despliegue desde `main`. Pages estaba deshabilitado durante la auditoría. El flujo público y la instalación en dispositivos físicos quedan pendientes.
 - Pasaron las 38 comprobaciones existentes y seis nuevas en Chromium 156 con `node tests/i0.mjs --no-sandbox`. Se verificaron el manifest, el arranque sin red, la descarga, la migración por respaldo y el guardado entre versiones. Chromium bloqueó `file://` por política del entorno y se probó el archivo descargable por HTTP local. El aviso de instalación se simuló. `actionlint` validó el workflow y dos compilaciones produjeron archivos idénticos.
+- GitHub Actions confirmó las 44 comprobaciones en Chrome y permitió abrir el HTML mediante `file://`. En esa modalidad pasaron las pruebas de imágenes, respaldo, restauración y PDF. [Ejecución del PR](https://github.com/kdnaskrlos/Montajes-Sublimacion/actions/runs/45743061883).
 
 ## Auditoría de publicación de 1.31.0
 
@@ -85,4 +86,4 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 
 ## Próxima acción
 
-Revisar el PR de `codex/pwa-v1.31.0` y decidir cómo publicar una copia sin los datos personales detectados.
+Revisar el PR de `codex/pwa-v1.31.0` y decidir cómo publicar una copia sin los datos personales detectados. [PR #7](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/7).
