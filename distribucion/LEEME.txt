@@ -1,0 +1,25 @@
+Montajes Sublimación 1.29.0
+
+Abrir el programa
+
+1. Si recibiste el ZIP, extrae su contenido en una carpeta de tu equipo.
+2. Abre Montajes-Sublimacion.html con un navegador actualizado. El programa
+   funciona a partir de ese archivo y se puede abrir sin instalarlo.
+3. Guarda el HTML en una ubicación fija. El navegador conserva los pedidos,
+   lotes e imágenes en su propio almacenamiento.
+
+Respaldar o trasladar los datos
+
+1. En la copia que usas actualmente, abre Historial y pulsa Exportar respaldo.
+2. Conserva el JSON en una ubicación segura. Hazlo antes de sustituir el HTML,
+   moverlo o cambiar de navegador, perfil o equipo.
+3. En la nueva copia, si los datos no aparecen, abre Historial, elige Importar
+   respaldo y selecciona el JSON. Comprueba pedidos, lotes e imágenes.
+   Para revertir la importación, usa Restaurar estado anterior en Historial.
+
+Acceso directo en Windows
+
+1. En el Escritorio, selecciona Nuevo > Acceso directo y apunta al HTML extraído.
+2. Abre Propiedades del acceso directo y selecciona Cambiar icono.
+3. Usa Examinar para seleccionar el archivo ICO de la carpeta de distribución.
+   Conserva ese archivo en la misma ubicación para mantener el icono.

@@ -1,5 +1,5 @@
 # Estado actual
-Fecha: 2026-11-25. Versión verificada: 1.29.0. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Base de estabilización: `main` en `2994984` (v1.28.5). Rama de entrega: `codex/estabilizacion-v1.29.0`.
+Fecha: 2026-11-25. Versión en `main`: 1.29.0, commit `de39965` ([PR #4](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/4)). Rama de distribución: `codex/distribucion-v1.29.0`.
 
 ## Base técnica
 Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
@@ -51,9 +51,15 @@ Comando y alcance de las pruebas en [tests/README.md](../tests/README.md).
 I0: entorno Codex configurado y batería de referencia ejecutada con datos ficticios. HTML base v1.28.3 intacto.
 I1: guardado seguro de pedidos y lotes integrado en main, commit `db3fc4d`.
 I2: respaldos y restauración segura integrados en `main` en `2994984`.
-I3/I4: estabilización de cantidades, producción, historial y guardado local entre pestañas en una sola entrega.
+I3/I4: estabilización de cantidades, producción, historial y guardado local entre pestañas integrada en `de39965`.
 I5: revisión visual de impresión, experiencia móvil/escritorio y accesibilidad (medio).
 I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar IndexedDB para datos si límites/volumen lo justifican; no nube por defecto.
 
+## Distribución de 1.29.0
+
+- Instrucciones de apertura, respaldo y acceso directo para Windows en [LEEME.txt](../distribucion/LEEME.txt).
+- El HTML de la distribución preliminar coincide byte por byte con `de39965`. El archivo fuente del icono aprobado no está disponible entre los adjuntos accesibles.
+- Las 35 comprobaciones volvieron a pasar en Chromium por HTTP local. La política del navegador volvió a bloquear `file://`.
+
 ## Próxima acción
-Revisar el pull request de estabilización antes de integrar la versión en `main`.
+Recibir el icono aprobado para producir el PNG y el ICO, incrustar el favicon y verificar el ZIP final.

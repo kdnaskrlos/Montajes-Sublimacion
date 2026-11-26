@@ -37,3 +37,9 @@
 - Se actualizó la base a `2994984` y se unificaron I3 e I4 en `codex/estabilizacion-v1.29.0`. El HTML pasa a 1.29.0.
 - Se verificaron cantidades y conversiones exactas, alertas de mangas chemis, aislamiento de lotes y portadas, coherencia de producción y exclusión de guardado entre pestañas.
 - Pasaron las 28 comprobaciones anteriores y 7 nuevas. Chromium bloqueó `file://` por política del entorno. Las pruebas funcionales, incluidas imágenes, respaldo y PDF, se completaron por HTTP local.
+
+## 2026-11-25 — Preparación de la distribución 1.29.0
+
+- Se verificó la integración del PR #4 en `main` (`de39965`) y se prepararon las instrucciones en `codex/distribucion-v1.29.0`.
+- Se confirmó la identidad del HTML con la versión verificada de estabilización. Los archivos del icono, el favicon y el ZIP final dependen del original aprobado, pendiente de recibir.
+- Se repitieron las 35 comprobaciones de regresión con éxito en Chromium por HTTP local.
