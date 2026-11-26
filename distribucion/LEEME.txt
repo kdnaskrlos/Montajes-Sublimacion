@@ -1,4 +1,4 @@
-Montajes Sublimación 1.29.0
+Montajes Sublimación 1.30.0
 
 Abrir el programa
 
@@ -16,6 +16,10 @@ Respaldar o trasladar los datos
 3. En la nueva copia, si los datos no aparecen, abre Historial, elige Importar
    respaldo y selecciona el JSON. Comprueba pedidos, lotes e imágenes.
    Para revertir la importación, usa Restaurar estado anterior en Historial.
+
+Al actualizar a 1.30.0, las mangas antiguas se cargan en pares o unidades
+según el modo guardado. Los shorts que usaban otra cantidad por prenda
+conservan su total físico en la columna de piezas sueltas.
 
 Acceso directo en Windows
 

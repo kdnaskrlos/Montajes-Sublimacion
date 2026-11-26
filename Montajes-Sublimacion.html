@@ -39,8 +39,7 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 
 /* barra lateral */
 .side{position:fixed;inset:0 auto 0 0;width:calc(var(--side) + env(safe-area-inset-left,0px));padding:12px 0 12px env(safe-area-inset-left,0px);background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:5}
-.side .logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin-bottom:10px}
-.side .logo svg{width:22px;height:22px}
+.side .logo{width:40px;height:40px;border-radius:12px;background:#000;object-fit:contain;margin-bottom:10px}
 .nav{width:72px;background:none;border:0;border-radius:10px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted)}
 .nav svg{width:22px;height:22px}
 .nav:hover{background:var(--surface-2);color:var(--ink)}
@@ -263,7 +262,7 @@ td.bad{background:color-mix(in srgb,var(--err) 14%,var(--surface))} td.bad input
 td.w{background:color-mix(in srgb,var(--warn) 14%,var(--surface))}
 #grid thead th+th,#grid tbody td,#grid tfoot td{border-left:1px solid var(--line)}
 /* columnas de ancho fijo: no cambian al pasar de un cliente a otro */
-#grid{table-layout:fixed;min-width:calc(56px + 10 * 88px)}
+#grid{table-layout:fixed;min-width:calc(56px + 16 * 88px)}
 #grid thead th:first-child{width:64px}
 #grid .hd{min-width:0}
 #grid td input{min-width:0}
@@ -495,7 +494,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </style>
 
 <nav class="side" aria-label="Secciones">
-  <div class="logo" aria-hidden="true" id="logo"></div>
+  <img class="logo" id="logo" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQBAMAAAB8P++eAAAAMFBMVEX////9/f35+fnw8PDm5ube3t7MzMygoKB+fn5DQ0MVFRUGBgYDAwMCAgIBAQEAAACKrWYgAAAD9ElEQVR42u1WbWhbVRh+zk3WLAGTc1tpKLrmtugqc7MLbo4ycTqH/2S6H0P8mGHo/OucHxuKRsHSgNiyqcwidEwZ28oYbEKZDZ3fxdWa1m7O4rIk1Q78SO9JgmxNcu/rj5t783W7Fn+J7Py5l3Menvc97/N+HEZY2pJwA3gD+H8GOq2/8QWYgsaXmTVDbImMmWPC7pyce0oMRERExbFz3J7JdclAGIx6bl3+dl8dSAYgKYKXfRSe3qZ6HFQAaN7KLNNaPoQBql9vtnOZd4yolunM0GH/4/11hKxdbBGsMNLGTcZYOLiqz+YeV13D8e+PuIsmI61+S3061V4HzJxif0XZ67uZFUdK4JZT9YzeDH6PLNuh/qhwM+DyjG+ivq3xDPe/whSICmVyW+/mNqr4/D0YAofgJaBg2ZdtVOEt3W+zNABu3FrPBxvIbhU2HNjX8V5DTLUk5AD+eJf5qvJCFnvYzv7gzhcqskcgfyjw0YqpBwAw09nBDdvcT1y4PA8re/TCow3fspPD+18bVzXL7jU/FR+ReJvUPGcGnJ0P8KB8buXlzkaO46mX8KFrh6T+nD0uMgEmlCteAHCEAVzVj7SMDLfOrm9JToaPus4fHGglNuEpvigxLNe3b3SXs2c3gFdX6lo+tC8MdL2/vBjreyMEAOg4mbCyR5qJ3AHI7+i/jp65kv8t99jDv3ysAF1dANBQkY+kxY5GaN5VLIQGoon82eLIRTeFe4lI6+nVVCIiKlXhD6e7v/He9ffY5qxTy3lnAvHIxpRvDSe6xzPVXlmFksyDGhxnur+e2+bL8BNbVk/IaFqra0G3Ut0pSADQb/6sa1Iwnvxz7Mu1pX3blqI/O783IwDkB0dD1+s97Kdn9hu1eaL78wV7DwCsuVNMAwB6npoydoSnjlEVgGPWsEjLvgKgqqrg9YxNBQCt0yVvOYAgR8HGdJQASIEKQ1EOXXhYFVDDrf3rGQBo8bRRTSgegwBDwgo4pRQ4yh48COBCKQoyAQGLkXTQqgOzB+/rA4Dv9gLsWicA53MAfXDx9P3cMi2SXxzyby6IGCOtEAXQdG8awnebAgwlBzeZjAIqkrqaGX1oHYCo6cMnnaqP0omJ6cPlyxCad0nSJXekMviTm5is39S8y8FIyACI0vF4nIhiz9dodtZIRErH40Y+zgkAjd7ik9XA3KdZ1RwajRxOgAsAc+qK7dXdJ5uqzDIwgp40xFCqGUvb5llZQn3cGgUkKjuGFXBWMSxMRf7t0OSAVGZcfAzzJTIuvthSGU3goqyKCeKLEy4JKFtA6bpI41SqEcXGsFKhDGtbGCfXvFJUsnt8yFZqMKp9GtRcAnbA/+gj7h/oq+DiaDPsrQAAAABJRU5ErkJggg==">
   <button class="nav" data-v="pedidos"></button>
   <button class="nav" data-v="resumen"></button>
   <button class="nav" data-v="produccion"></button>
@@ -505,7 +504,7 @@ tbody tr:hover td{background:var(--surface-2)}
     <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
     <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="currentColor"/></svg>
   </button>
-  <span class="ver" title="Versión del programa">v1.29.0</span>
+  <span class="ver" title="Versión del programa">v1.30.0</span>
 </nav>
 
 <div class="shell">
@@ -552,18 +551,31 @@ tbody tr:hover td{background:var(--surface-2)}
 
 <script>
 (function(){
-const TALLAS=["2","4","6","8","10","12","14","16","XS","S","M","L","XL","2XL","3XL","4XL"];
+const TALLAS=["2","4","6","8","10","12","14","16","XS","S","M","L","XL","2XL","3XL","4XL","5XL"];
 const TIPOS=[
-  {k:"C", n:"Franela", s:"4 piezas", c:"--t-corta", ic:"corta"},
-  {k:"L", n:"Suéter", s:"4 piezas", c:"--t-larga", ic:"larga"},
-  {k:"FE",n:"Frente y espalda", s:"2 piezas", c:"--t-fe", ic:"fyesp"},
-  {k:"SM",n:"Franelilla", s:"2 piezas", c:"--t-info", ic:"franelilla"},
-  {k:"F", n:"Solo frente", s:"1 pieza", c:"--t-frente", ic:"frente"},
-  {k:"E", n:"Solo espalda", s:"1 pieza", c:"--t-espalda", ic:"espalda"},
-  {k:"MC",n:"Mangas cortas", s:"", c:"--t-manga", ic:"mcorta"},
-  {k:"MQ",n:"Mangas cortas chemis", s:"", c:"--t-mchemis", ic:"mchemis"},
-  {k:"ML",n:"Mangas largas", s:"", c:"--t-mlarga", ic:"mlarga"},
-  {k:"SH",n:"Short", s:"", c:"--t-short", ic:"short"}
+  {k:"C",   n:"Franela",             s:"4 piezas", c:"--t-corta",   ic:"corta"},
+  {k:"L",   n:"Suéter",              s:"4 piezas", c:"--t-larga",   ic:"larga"},
+  {k:"FE",  n:"Frente y espalda",    s:"2 piezas", c:"--t-fe",      ic:"fyesp"},
+  {k:"CH",  n:"Chemis",              s:"4 piezas", c:"--t-mchemis", ic:"chemis"},
+  {k:"CHL", n:"Chemis suéter",       s:"4 piezas", c:"--t-mchemis", ic:"chemislarga"},
+  {k:"SM",  n:"Franelilla",          s:"2 piezas", c:"--t-info",    ic:"franelilla"},
+  {k:"F",   n:"Solo frente",         s:"1 pieza",  c:"--t-frente",  ic:"frente"},
+  {k:"E",   n:"Solo espalda",        s:"1 pieza",  c:"--t-espalda", ic:"espalda"},
+  {k:"MCP", n:"Mangas cortas",       s:"pares",    c:"--t-manga",   ic:"mcortaPar"},
+  {k:"MQP", n:"Mangas cortas chemis",s:"pares",    c:"--t-mchemis", ic:"mchemisPar"},
+  {k:"MLP", n:"Mangas largas",       s:"pares",    c:"--t-mlarga",  ic:"mlargaPar"},
+  {k:"MCU", n:"Mangas cortas",       s:"unidad",   c:"--t-manga",   ic:"mcorta"},
+  {k:"MQU", n:"Mangas cortas chemis",s:"unidad",   c:"--t-mchemis", ic:"mchemis"},
+  {k:"MLU", n:"Mangas largas",       s:"unidad",   c:"--t-mlarga",  ic:"mlarga"},
+  {k:"SHC", n:"Short",               s:"2 piezas", c:"--t-short",  ic:"short"},
+  {k:"SHP", n:"Short",               s:"pieza",    c:"--t-short",  ic:"shortPieza"}
+];
+const TIPOS_PEDIDO=Object.fromEntries(TIPOS.map(t=>[t.k,t]));
+const LEGADOS={MC:"MCP",MQ:"MQP",ML:"MLP",SH:"SHC"};
+const MANGAS=[
+  {par:"MCP",unid:"MCU",pieza:"mc",prenda:"C",aviso:"imparMC"},
+  {par:"MQP",unid:"MQU",pieza:"mq",prenda:"CH",aviso:"imparMQ"},
+  {par:"MLP",unid:"MLU",pieza:"ml",prenda:"L",aviso:"imparML"}
 ];
 const ESTADOS=["Por enviar","En producción","Listo","Entregado"];
 const LISTAS_DEF={
@@ -578,6 +590,7 @@ const EXTRAS_DEF=[
   {k:"cierre",n:"Cierre",p:"camisa"},{k:"etiqueta",n:"Etiqueta",p:"todo"},{k:"bolsillo",n:"Bolsillo",p:"todo"},
   {k:"elastico",n:"Elástico",p:"short"},{k:"cordon",n:"Cordón",p:"short"},{k:"forro",n:"Forro / malla",p:"short"}
 ];
+// piezasShort se conserva únicamente para leer cantidades de versiones anteriores.
 function normAj(a){a=Object.assign({piezasShort:2},a||{});
   if(!cantidadValida(a.piezasShort)||a.piezasShort===0)a.piezasShort=2;
   a.listas=a.listas||{};for(const k in LISTAS_DEF)if(!Array.isArray(a.listas[k]))a.listas[k]=LISTAS_DEF[k].slice();
@@ -589,6 +602,10 @@ const det=k=>DETS().find(x=>x.k===k)||{k,n:k,p:"todo"};
 const P={
   corta:'<path d="M8.5 3.5 4.2 5.6 2.5 10l3.2 1.4 1.1-1.6V20.5h10.4V9.8l1.1 1.6L21.5 10l-1.7-4.4-4.3-2.1c-.6 1.5-1.9 2.4-3.5 2.4s-2.9-.9-3.5-2.4Z"/>',
   larga:'<path d="M8.5 3.5 5 5 3 18.6l2.7.5 1.1-8.6v10h10.4v-10l1.1 8.6 2.7-.5L19 5l-3.5-1.5c-.6 1.5-1.9 2.4-3.5 2.4s-2.9-.9-3.5-2.4Z"/>',
+  chemis:'<path d="M8.5 3.5 4.2 5.6 2.5 10l3.2 1.4 1.1-1.6V20.5h10.4V9.8l1.1 1.6L21.5 10l-1.7-4.4-4.3-2.1Z"/><path d="m8.5 3.5-.1 4.8L12 6l3.6 2.3-.1-4.8M12 6v5"/>',
+  chemislarga:'<path d="M8.5 3.5 5 5 3 18.6l2.7.5 1.1-8.6v10h10.4v-10l1.1 8.6 2.7-.5L19 5l-3.5-1.5Z"/><path d="m8.5 3.5-.1 4.8L12 6l3.6 2.3-.1-4.8M12 6v5"/>',
+  fyespchemis:'<path d="M8.5 3.5 5.2 5l1.6 4.8v10.7h10.4V9.8L18.8 5l-3.3-1.5Z"/><path d="m8.5 3.5-.1 4.8L12 6l3.6 2.3-.1-4.8M12 6v5"/>',
+  mlargachemis:'<path d="M4.2 7.2C6.2 6.8 8.4 3.6 12 3.6s5.8 3.2 7.8 3.6l-.9 1.5c-1.3 2.4-1.6 7.2-1.8 11.6v.8H6.9v-.8c-.2-4.4-.5-9.2-1.8-11.6Z"/><path d="M6.9 17.4h10.2"/>',
   frente:'<path d="M8.5 3.5 5.6 4.8C6.3 7.6 7.9 8.7 7 11.4V20.5h10V11.4c-.9-2.7.7-3.8 1.4-6.6L15.5 3.5c-.6 1.5-1.9 2.4-3.5 2.4s-2.9-.9-3.5-2.4Z"/>',
   espalda:'<path d="M8.5 3.5 5.6 4.8C6.3 7.6 7.9 8.7 7 11.4V20.5h10V11.4c-.9-2.7.7-3.8 1.4-6.6L15.5 3.5c-.8.6-2.1 1-3.5 1s-2.7-.4-3.5-1Z"/>',
   mcorta:'<path d="M2.8 11.2C5 10.6 7.6 7.4 12 7.4s7 3.2 9.2 3.8l-2.6 5.6.3.9H5.1l.3-.9Z"/>',
@@ -596,6 +613,7 @@ const P={
   fyesp:'<path d="M8.5 3.5 5.2 5l1.6 4.8v10.7h10.4V9.8L18.8 5l-3.3-1.5c-.6 1.5-1.9 2.4-3.5 2.4s-2.9-.9-3.5-2.4Z"/>',
   mlarga:'<path d="M4.2 7.2C6.2 6.8 8.4 3.6 12 3.6s5.8 3.2 7.8 3.6l-.9 1.5c-1.3 2.4-1.6 7.2-1.8 11.6v.8H6.9v-.8c-.2-4.4-.5-9.2-1.8-11.6Z"/>',
   short:'<path d="M5 4h14l1.6 15.5h-6.4L12 10.5l-2.2 9H3.4Z"/><path d="M5.3 7h13.4"/>',
+  shortPieza:'<path d="M6.3 3.7 L19.4 5.4 C19.2 11.3 19.7 13.2 22 14.2 C21.5 16.2 21.5 18.2 21.6 20.3 H3.5 C3.6 18.1 3 16 2 14.2 C5.7 13.6 5.3 10.5 6.3 3.7 Z"/>',
   pedidos:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
   resumen:'<path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/>',
   produccion:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7.5 20 17M8 16.5 20 7"/>',
@@ -619,6 +637,9 @@ const P={
   hilo:'<path d="M7 4h10M7 20h10M8 4v16M16 4v16M8 8l8 3M8 12l8 3"/>',
   pz:'<path d="M4 4h7v7H4zM13 13h7v7h-7z"/><path d="M13 7.5h5M16 4.5v6"/>'
 };
+for(const k of ["mcorta","mchemis","mlarga","mlargachemis"]){
+  P[k+"Par"]=[0.3,12.9].map(x=>`<g transform="translate(${x} 5.4) scale(.46)" stroke-width="2.8">${P[k]}</g>`).join("");
+}
 function ico(k){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k]}</svg>`}
 function chip(k,c,sm){return `<span class="chip${sm?" sm":""}" style="--c:var(${c})">${ico(k)}</span>`}
 
@@ -636,7 +657,6 @@ function fecha(iso){if(!iso)return "";const [y,m,d]=iso.split("-");return `${d}/
 function toast(t,accion){const el=$("toast");el.innerHTML="";const sp=document.createElement("span");sp.textContent=t;el.appendChild(sp);
   if(accion){const b=document.createElement("button");b.className="tbtn";b.textContent=accion.txt;b.onclick=()=>{el.hidden=true;accion.fn()};el.appendChild(b)}
   el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,accion?7000:2600)}
-const TIPOS_MANGA=["MC","ML","MQ"];
 const MENSAJE_CANTIDADES="Corrige las cantidades marcadas en Pedidos antes de generar producción.";
 function q(cl,t,k){
   const v=cl.q?.[t]?.[k];
@@ -650,36 +670,50 @@ function setQ(cl,t,k,v){
     if(!Object.keys(cl.q[t]).length)delete cl.q[t];
   }
 }
-function cantidadesPresentes(cl,tipos){
-  return TALLAS.flatMap(t=>tipos.filter(k=>Object.hasOwn(cl.q?.[t]||{},k)).map(k=>[t,k,cl.q[t][k]]));
+function normCli(c){
+  c.id=c.id||uid();c.q=c.q||{};c.estado=c.estado||ESTADOS[0];c.req=c.req||{};c.req.extras=c.req.extras||[];
+  return c;
 }
-function cambiarUnidad(cl,campo,nuevo,tipos,convertir,motivo){
-  if(cl[campo]===nuevo)return false;
-  const cantidades=cantidadesPresentes(cl,tipos);
-  const invalidas=cantidades.find(([, ,v])=>!cantidadValida(v));
-  if(invalidas){toast(MENSAJE_CANTIDADES);return false}
-  const fraccion=cantidades.find(([, ,v])=>!cantidadValida(convertir(v)));
-  if(fraccion){toast(`Talla ${fraccion[0]}: ${motivo}`);return false}
-  for(const [t,k,v] of cantidades)setQ(cl,t,k,convertir(v));
-  cl[campo]=nuevo;
-  return true;
-}
-function normCli(c){c.id=c.id||uid();c.q=c.q||{};c.modoManga=c.modoManga||"par";c.modoShort=c.modoShort||"comp";c.estado=c.estado||ESTADOS[0];c.req=c.req||{};c.req.extras=c.req.extras||[];return c}
-function recuperarUnidad(cl,campo,origen,destino,tipos,factor){
-  if(cl[campo]!==origen)return;
-  const cantidades=cantidadesPresentes(cl,tipos);
-  // Las versiones anteriores guardaban fracciones al convertir piezas sueltas.
-  const piezas=v=>Math.round(v*factor);
-  if(cantidades.some(([, ,v])=>!cantidadValida(v))&&cantidades.every(([, ,v])=>
-    typeof v==="number"&&cantidadValida(piezas(v))&&piezas(v)/factor===v)){
-    for(const [t,k,v] of cantidades)setQ(cl,t,k,piezas(v));
-    cl[campo]=destino;
+function migrarCantidad(fila,origen,par,unid,modoPiezas,factor){
+  if(!Object.hasOwn(fila,origen))return;
+  const v=fila[origen];
+  delete fila[origen];
+  let destino=par, cantidad=v;
+  if(modoPiezas)destino=unid;
+  else if(factor!==2||!cantidadValida(v)){
+    const piezas=Math.round(v*factor);
+    if(Number.isFinite(v)&&cantidadValida(piezas)&&piezas/factor===v){
+      destino=unid;
+      cantidad=piezas;
+    }else if(cantidadValida(v)){
+      // Un total fuera del rango seguro queda visible y bloquea la producción.
+      destino=unid;
+      cantidad=v*factor;
+    }
   }
+  if(cantidad!==0)fila[destino]=Object.hasOwn(fila,destino)?fila[destino]+cantidad:cantidad;
 }
 function normalizarCantidades(cl,aj){
   normCli(cl);
-  recuperarUnidad(cl,"modoManga","par","ind",TIPOS_MANGA,2);
-  recuperarUnidad(cl,"modoShort","comp","pz",["SH"],aj.piezasShort);
+  const modoManga=cl.modoManga||"par", modoShort=cl.modoShort||"comp";
+  for(const t of TALLAS){
+    const fila=cl.q[t];
+    if(!fila)continue;
+    const anterior=JSON.stringify(fila)+"|"+modoManga+"|"+modoShort;
+    migrarCantidad(fila,"MC","MCP","MCU",modoManga==="ind",2);
+    migrarCantidad(fila,"MQ","MQP","MQU",modoManga==="ind",2);
+    migrarCantidad(fila,"ML","MLP","MLU",modoManga==="ind",2);
+    migrarCantidad(fila,"SH","SHC","SHP",modoShort==="pz",aj.piezasShort);
+    if(!Object.keys(fila).length)delete cl.q[t];
+    for(const id of Object.keys(cl.ok||{})){
+      const [aviso,talla]=id.split(":");
+      if(talla!==t)continue;
+      const firmaAnterior=anterior+(aviso==="shortpz"?"|"+aj.piezasShort:"");
+      if(cl.ok[id]===firmaAnterior&&(aviso!=="shortpz"||aj.piezasShort===2))cl.ok[id]=firma(cl,t);
+    }
+  }
+  delete cl.modoManga;
+  delete cl.modoShort;
   return cl;
 }
 function norm(d){
@@ -687,20 +721,44 @@ function norm(d){
   o.clientes.forEach(c=>normalizarCantidades(c,o.ajustes));return o;
 }
 
-function piezas(cl,t,aj){
-  aj=aj||S.ajustes;
-  const C=q(cl,t,"C"),L=q(cl,t,"L"),F=q(cl,t,"F"),E=q(cl,t,"E"),MC=q(cl,t,"MC"),ML=q(cl,t,"ML"),MQ=q(cl,t,"MQ"),FE=q(cl,t,"FE"),rawSH=q(cl,t,"SH"),SM=q(cl,t,"SM");
-  const ps=aj.piezasShort||2,pzS=cl.modoShort==="pz",SH=pzS?0:rawSH,SHp=pzS?rawSH:0;
-  const k=cl.modoManga==="par"?2:1;
-  return {fr:C+L+SM+FE+F, es:C+L+SM+FE+E, FE, mc:2*C+MC*k, ml:2*L+ML*k, mq:MQ*k, sh:SH*ps+SHp, C,L,SM,F,E,MC,ML,MQ,SH,SHp,mqU:MQ*k,mcU:MC*k,mlU:ML*k};
+const PIEZAS=[
+  {k:"fr", n:"Frentes", c:"--t-frente"},
+  {k:"es", n:"Espaldas", c:"--t-espalda"},
+  {k:"frq",n:"Frentes chemis", c:"--t-mchemis"},
+  {k:"esq",n:"Espaldas chemis", c:"--t-mchemis"},
+  {k:"mc", n:"Mangas cortas", c:"--t-manga"},
+  {k:"ml", n:"Mangas largas", c:"--t-mlarga"},
+  {k:"mq", n:"Mangas cortas chemis", c:"--t-mchemis"},
+  {k:"mql",n:"Mangas largas chemis", c:"--t-mchemis"},
+  {k:"sh", n:"Piezas de short", c:"--t-short"}
+];
+const CLAVES_TOTAL=[...TIPOS.map(tp=>tp.k),...PIEZAS.map(p=>p.k),"total"];
+const ZERO=()=>Object.fromEntries(CLAVES_TOTAL.map(k=>[k,0]));
+const sumar=(r,p)=>{for(const k of CLAVES_TOTAL)r[k]+=p[k]};
+const completas=r=>r.C+r.L+r.CH+r.CHL;
+const mangasAdicionales=r=>MANGAS.reduce((s,m)=>s+2*r[m.par]+r[m.unid],0);
+function piezas(cl,t){
+  const r={};
+  for(const {k} of TIPOS)r[k]=q(cl,t,k);
+  const cuerpos=r.C+r.L+r.SM+r.FE;
+  r.fr=cuerpos+r.F;
+  r.es=cuerpos+r.E;
+  r.frq=r.esq=r.CH+r.CHL;
+  for(const m of MANGAS)r[m.pieza]=2*(r[m.prenda]+r[m.par])+r[m.unid];
+  r.mql=2*r.CHL;
+  r.sh=2*r.SHC+r.SHP;
+  r.total=PIEZAS.reduce((n,p)=>n+r[p.k],0);
+  return r;
 }
-const ZERO=()=>({C:0,L:0,SM:0,FE:0,F:0,E:0,mcU:0,mlU:0,mqU:0,SH:0,SHp:0,fr:0,es:0,mc:0,ml:0,mq:0,sh:0});
-function sumCliente(cl,aj){const r=ZERO();TALLAS.forEach(t=>{const p=piezas(cl,t,aj);for(const x in r)r[x]+=p[x]});r.total=r.fr+r.es+r.mc+r.ml+r.mq+r.sh;return r}
-function porTalla(){const out={};TALLAS.forEach(t=>{const r=ZERO();S.clientes.forEach(cl=>{const p=piezas(cl,t);for(const x in r)r[x]+=p[x]});r.total=r.fr+r.es+r.mc+r.ml+r.mq+r.sh;out[t]=r});return out}
-function totales(clientes,aj){const r=ZERO();r.total=0;clientes.forEach(cl=>{const s=sumCliente(cl,aj);for(const x in r)r[x]+=s[x]});return r}
-function cantidadesIncorrectas(clientes,aj){
-  return clientes.some(c=>cantidadesPresentes(c,TIPOS.map(t=>t.k)).some(([, ,v])=>!cantidadValida(v)))||
-    !cantidadValida(totales(clientes,aj).total);
+function sumCliente(cl){const r=ZERO();TALLAS.forEach(t=>sumar(r,piezas(cl,t)));return r}
+function porTalla(){return Object.fromEntries(TALLAS.map(t=>{
+  const r=ZERO();S.clientes.forEach(cl=>sumar(r,piezas(cl,t)));return [t,r];
+}))}
+function totales(clientes){const r=ZERO();clientes.forEach(cl=>sumar(r,sumCliente(cl)));return r}
+function cantidadesIncorrectas(clientes){
+  return clientes.some(c=>TALLAS.some(t=>TIPOS.some(({k})=>
+    Object.hasOwn(c.q[t]||{},k)&&!cantidadValida(c.q[t][k]))))||
+    !cantidadValida(totales(clientes).total);
 }
 
 /* ---------- validaciones ---------- */
@@ -712,25 +770,24 @@ function alertasCliente(cl){
   TALLAS.forEach(t=>{
     TIPOS.forEach(tp=>{const v=cl.q[t]?.[tp.k];if(Object.hasOwn(cl.q[t]||{},tp.k)&&!cantidadValida(v))a.push({lv:"err",t,k:tp.k,tx:`Talla ${t}: “${tp.n}” tiene ${esc(v)}. Corrige la cantidad con un entero desde 0.`})});
     const p=piezas(cl,t);
-    if(cl.modoManga==="ind"){
-      if(p.MQ%2) a.push({lv:"warn",t,k:"MQ",ty:"imparMQ",tx:`Talla ${t}: ${p.MQ} manga${p.MQ>1?"s":""} corta${p.MQ>1?"s":""} chemis suelta${p.MQ>1?"s":""}. Queda una manga sin su par.`});
-      if(p.MC%2) a.push({lv:"warn",t,k:"MC",ty:"imparMC",tx:`Talla ${t}: ${p.MC} manga${p.MC>1?"s":""} corta${p.MC>1?"s":""} suelta${p.MC>1?"s":""}. Queda una manga sin su par.`});
-      if(p.ML%2) a.push({lv:"warn",t,k:"ML",ty:"imparML",tx:`Talla ${t}: ${p.ML} manga${p.ML>1?"s":""} larga${p.ML>1?"s":""} suelta${p.ML>1?"s":""}. Queda una manga sin su par.`});
+    for(const {par,unid,aviso} of MANGAS){
+      if(p[unid]%2)a.push({lv:"warn",t,k:unid,ty:aviso,tx:`Talla ${t}: ${TIPOS_PEDIDO[par].n}, ${p[unid]} en unidades sueltas. Queda una manga sin su par.`});
     }
-    if(cl.modoShort==="pz"&&p.SHp>0){const ps=S.ajustes.piezasShort;const r=p.SHp%ps;
-      if(r) a.push({lv:"warn",t,k:"SH",ty:"shortpz",tx:`Talla ${t}: ${p.SHp} pieza${p.SHp>1?"s":""} de short sueltas. ${p.SHp>=ps?`Arman ${Math.floor(p.SHp/ps)} short${Math.floor(p.SHp/ps)>1?"s":""} y sobran ${r} pieza${r>1?"s":""}`:`No completan un short (cada short lleva ${ps} piezas)`}. Confirma que el cliente pidió piezas sueltas.`});}
+    if(p.SHP%2)a.push({lv:"warn",t,k:"SHP",ty:"shortpz",tx:`Talla ${t}: ${p.SHP} pieza${p.SHP===1?"":"s"} de short en la columna de piezas sueltas. Confirma que el cliente pidió piezas sueltas.`});
     if(p.F>0&&p.E>0){
-      const pares=Math.floor(p.mcU/2)+Math.floor(p.mlU/2);const n=Math.min(p.F,p.E,pares);
-      if(pares>0) a.push({lv:"warn",t,k:"F",ty:"fem",fix:t,tx:`Talla ${t}: las mangas cortas estándar y largas alcanzan para ${n} prenda${n>1?"s":""} completa${n>1?"s":""}. ¿Corresponden a esos frentes y espaldas?`});
-      if(p.mqU){
-        const paresChemis=Math.floor(p.mqU/2);
-        const nChemis=Math.min(p.F,p.E,paresChemis);
-        a.push({lv:"warn",t,k:"MQ",ty:"femq",tx:`Talla ${t}: hay ${p.mqU} manga${p.mqU===1?"":"s"} chemis junto con frentes y espaldas. ${nChemis?`Alcanzan para ${nChemis} prenda${nChemis===1?"":"s"} chemis si corresponden a esas piezas. Conserva las mangas chemis en su columna.`:"Revisa si falta la otra manga para completar la prenda."}`});
-      }else if(!pares&&!p.mcU&&!p.mlU){
+      const pares=p.MCP+p.MLP+Math.floor(p.MCU/2)+Math.floor(p.MLU/2);
+      const n=Math.min(p.F,p.E,pares);
+      if(n)a.push({lv:"warn",t,k:"F",ty:"fem",fix:t,tx:`Talla ${t}: las mangas cortas y largas estándar alcanzan para ${n} prenda${n===1?"":"s"} completa${n===1?"":"s"}. ¿Corresponden a esos frentes y espaldas?`});
+      const chemis=2*p.MQP+p.MQU;
+      if(chemis){
+        const nChemis=Math.min(p.F,p.E,Math.floor(chemis/2));
+        a.push({lv:"warn",t,k:p.MQP?"MQP":"MQU",ty:"femq",tx:`Talla ${t}: hay ${chemis} manga${chemis===1?"":"s"} chemis junto con frentes y espaldas. ${nChemis?`Por cantidad, alcanzarían para ${nChemis} prenda${nChemis===1?"":"s"} chemis si corresponden a esas piezas.`:"Revisa si falta la otra manga para completar la prenda."}`});
+      }else if(!pares&&!p.MCU&&!p.MLU){
         const n2=Math.min(p.F,p.E);a.push({lv:"warn",t,k:"F",ty:"fe",fixsm:t,tx:`Talla ${t}: ${p.F} solo frente y ${p.E} solo espalda sin mangas. Si son la misma prenda, ${n2>1?"son":"es"} ${n2} franelilla${n2>1?"s":""}; si no, le faltan 2 mangas a cada una.`});
       }
-    }else if(p.fr===0&&p.es===0&&(p.MC>0||p.ML>0||p.MQ>0)){
-      a.push({lv:"warn",t,k:p.MC?"MC":p.ML?"ML":"MQ",ty:"solomangas",tx:`Talla ${t}: solo hay mangas, sin frente ni espalda. Confirma que el cliente pidió solo mangas.`});
+    }else if(!p.fr&&!p.es&&!p.frq&&!p.esq&&mangasAdicionales(p)){
+      const k=MANGAS.flatMap(m=>[m.par,m.unid]).find(k=>p[k]);
+      a.push({lv:"warn",t,k,ty:"solomangas",tx:`Talla ${t}: solo hay mangas, sin frente ni espalda. Confirma que el cliente pidió solo mangas.`});
     }
   });
   const total=sumCliente(cl).total;
@@ -738,10 +795,10 @@ function alertasCliente(cl){
   if(total===0) a.push({lv:"warn",tx:`${esc(nm)} no tiene prendas cargadas.`});
   /* avisos que el usuario ya confirmó: se ocultan mientras esa talla no cambie */
   const ok=cl.ok||{};let conf=0;
-  const res=a.filter(x=>{if(!x.ty)return true;x.id=x.ty+":"+x.t;if(ok[x.id]&&ok[x.id]===firma(cl,x.t,x.ty)){conf++;return false}return true});
+  const res=a.filter(x=>{if(!x.ty)return true;x.id=x.ty+":"+x.t;if(ok[x.id]&&ok[x.id]===firma(cl,x.t)){conf++;return false}return true});
   res.confirmados=conf;return res;
 }
-function firma(cl,t,ty){return JSON.stringify(cl.q[t]||{})+"|"+cl.modoManga+"|"+cl.modoShort+(ty==="shortpz"?"|"+S.ajustes.piezasShort:"")}
+function firma(cl,t){return JSON.stringify(cl.q[t]||{})}
 function nivel(a){return a.some(x=>x.lv==="err")?"err":a.length?"warn":"ok"}
 
 /* ---------- guardado ---------- */
@@ -932,7 +989,6 @@ async function iniciar(){
 function renderHeader(){
   const f=new Date().toLocaleDateString("es-VE",{weekday:"long",day:"numeric",month:"long"});
   $("fecha").innerHTML=ico("cal")+esc(f.replace(/(^|\s)\S/g,m=>m.toUpperCase()).replace(" De "," de "));
-  $("logo").innerHTML=ico("corta");
   const L={pedidos:"Pedidos",resumen:"Resumen",produccion:"Producción",historial:"Historial"};
   document.querySelectorAll(".nav").forEach(b=>b.innerHTML=ico(b.dataset.v)+L[b.dataset.v]);
   $("btnLote").innerHTML=ico("guardar")+"Guardar lote";$("btnUndo").innerHTML=ico("undo")+"<span>Deshacer</span>";$("btnRedo").innerHTML=ico("redo")+"<span>Rehacer</span>";
@@ -942,13 +998,13 @@ function renderTiles(){
   const t=totales(S.clientes);const conP=S.clientes.filter(c=>sumCliente(c).total).length;
   const tile=(ic,c,n,lb,sub)=>`<div class="tile tint" style="--c:var(${c})"><span class="bg">${ico(ic)}</span><div class="lb">${chip(ic,c,1)}${lb}</div><div class="v num">${n}</div><div class="sub">${sub||"&nbsp;"}</div></div>`;
   $("tiles").innerHTML=
-    tile("corta","--t-larga",t.C+t.L,"Completas",`${t.C} franela${t.C===1?"":"s"} · ${t.L} suéter${t.L===1?"":"s"}`)+
+    tile("corta","--t-larga",completas(t),"Completas",`${t.C} franela${t.C===1?"":"s"} · ${t.L} suéter${t.L===1?"":"s"}${t.CH+t.CHL?` · ${t.CH+t.CHL} chemis`:""}`)+
     tile("franelilla","--t-info",t.SM,"Franelillas","2 piezas c/u")+
     tile("fyesp","--t-fe",t.FE,"Frente y espalda","2 piezas c/u")+
     tile("frente","--t-frente",t.F,"Solo frentes","1 pieza c/u")+
     tile("espalda","--t-espalda",t.E,"Solo espaldas","1 pieza c/u")+
-    tile("mcorta","--t-manga",t.mcU+t.mlU+t.mqU,"Mangas sueltas",`${t.mcU} cortas · ${t.mlU} largas${t.mqU?` · ${t.mqU} chemis`:""}`)+
-    tile("short","--t-short",t.SH,"Shorts",t.SHp?`+ ${t.SHp} piezas sueltas`:"")+
+    tile("mcorta","--t-manga",mangasAdicionales(t),"Mangas sueltas",`${2*t.MCP+t.MCU} cortas · ${2*t.MLP+t.MLU} largas${t.MQP||t.MQU?` · ${2*t.MQP+t.MQU} chemis`:""}`)+
+    tile("short","--t-short",t.SHC,"Shorts",t.SHP?`+ ${t.SHP} piezas sueltas`:"")+
     `<div class="tile dark"><span class="bg">${ico("plotter")}</span><div class="lb">${chip("plotter","--accent",1)}Piezas a imprimir</div><div class="v num">${t.total}</div><div class="sub">${conP} cliente${conP===1?"":"s"} con prendas</div></div>`;
 }
 
@@ -957,7 +1013,7 @@ function renderLista(){
   const el=$("clist");
   if(!S.clientes.length){el.innerHTML=`<p class="note">${loaded?"Aún no hay clientes. Escribe un nombre arriba y pulsa Agregar.":"Cargando pedidos…"}</p>`;return}
   el.innerHTML=S.clientes.map(cl=>{const s=sumCliente(cl);const a=alertasCliente(cl);const lv=nivel(a);
-    const parts=[];if(s.C+s.L)parts.push(`${s.C+s.L} compl.`);if(s.SM)parts.push(`${s.SM} franel.`);if(s.FE)parts.push(`${s.FE} f+e`);if(s.F)parts.push(`${s.F} fr.`);if(s.E)parts.push(`${s.E} esp.`);if(s.mcU+s.mlU+s.mqU)parts.push(`${s.mcU+s.mlU+s.mqU} mangas`);if(s.SH)parts.push(`${s.SH} shorts`);if(s.SHp)parts.push(`${s.SHp} pz. short`);
+    const parts=[];if(completas(s))parts.push(`${completas(s)} compl.`);if(s.SM)parts.push(`${s.SM} franel.`);if(s.FE)parts.push(`${s.FE} f+e`);if(s.F)parts.push(`${s.F} fr.`);if(s.E)parts.push(`${s.E} esp.`);if(mangasAdicionales(s))parts.push(`${mangasAdicionales(s)} mangas`);if(s.SHC)parts.push(`${s.SHC} shorts`);if(s.SHP)parts.push(`${s.SHP} pz. short`);
     const conf=confirmDel===cl.id;
     return `<div class="citem" data-id="${cl.id}" aria-current="${cl.id===sel}">
       <span class="cgrip" title="Arrastra para mover" aria-hidden="true">${ico("grip")}</span>
@@ -977,7 +1033,7 @@ function renderEditor(){
   const TO=tiposOrden();
   const el=$("editor");const cl=S.clientes.find(c=>c.id===sel);
   if(!cl){el.innerHTML=`<div class="card empty">${chip("corta","--accent")}<b>Selecciona o agrega un cliente</b><p class="note">Cada cliente tiene su planilla de tallas, la imagen del diseño y lo que lleva cada prenda.</p></div>`;return}
-  const par=cl.modoManga==="par",pzS=cl.modoShort==="pz";const ts=tallasVisibles(cl);const R=cl.req||{};
+  const ts=tallasVisibles(cl);const R=cl.req||{};
   el.innerHTML=`<div class="edgrid">
   <div class="card">
     <div class="fields">
@@ -987,16 +1043,14 @@ function renderEditor(){
     </div>
     <div class="toolbar">
       <div class="g">
-        <span class="chk">Mangas por <span class="seg" style="--c:var(--t-manga)" role="group" aria-label="Unidad de mangas"><button id="m-par" aria-pressed="${par}">Par</button><button id="m-ind" aria-pressed="${!par}">Unidad</button></span></span>
-        <span class="chk">Shorts por <span class="seg" style="--c:var(--t-short)" role="group" aria-label="Unidad de shorts"><button id="s-comp" aria-pressed="${!pzS}">Completo</button><button id="s-pz" aria-pressed="${pzS}">Pieza</button></span></span>
         ${ordenCambiado()?`<button class="lk" type="button" id="ordReset">Restablecer orden de columnas</button>`:""}
         <label class="chk"><input type="checkbox" id="f-usadas" ${soloUsadas?"checked":""}> Solo tallas con datos</label>
       </div>
     </div>
     <div class="alerts" id="ed-alertas"></div>
     <div class="gridwrap"><table id="grid">
-      <thead><tr><th class="stk">Talla</th>${TO.map(tp=>`<th data-col="${tp.k}"><div class="hd"><span class="drag" title="Arrastra para mover la columna">${chip(tp.ic,tp.c)}</span><span class="t">${tp.n}</span><span class="s">${tp.k==="MC"||tp.k==="ML"||tp.k==="MQ"?(par?"pares":"unidades"):tp.k==="SH"?(pzS?"piezas sueltas":S.ajustes.piezasShort+" piezas c/u"):tp.s}</span></div></th>`).join("")}</tr></thead>
-      <tbody>${ts.map(t=>`<tr data-t="${t}"><th>${t}</th>${TO.map(tp=>{const v=cl.q[t]&&cl.q[t][tp.k];return `<td style="--c:var(${tp.c})" data-k="${tp.k}"><input id="c-${t}-${tp.k}" inputmode="numeric" type="number" min="0" step="1" value="${v===undefined?"":esc(v)}" aria-label="${tp.n} talla ${t}"><span class="fill" title="Arrastra para copiar el valor"></span></td>`}).join("")}</tr>`).join("")}</tbody>
+      <thead><tr><th class="stk">Talla</th>${TO.map(tp=>`<th data-col="${tp.k}"><div class="hd"><span class="drag" title="Arrastra para mover la columna">${chip(tp.ic,tp.c)}</span><span class="t">${tp.n}</span><span class="s">${tp.s}</span></div></th>`).join("")}</tr></thead>
+      <tbody>${ts.map(t=>`<tr data-t="${t}"><th>${t}</th>${TO.map(tp=>{const v=cl.q[t]&&cl.q[t][tp.k];return `<td style="--c:var(${tp.c})" data-k="${tp.k}"><input id="c-${t}-${tp.k}" inputmode="numeric" type="number" min="0" step="1" value="${v===undefined?"":esc(v)}" aria-label="${tp.n}, ${tp.s}, talla ${t}"><span class="fill" title="Arrastra para copiar el valor"></span></td>`}).join("")}</tr>`).join("")}</tbody>
       <tfoot><tr><th>Total</th>${TO.map(tp=>`<td class="num" id="ft-${tp.k}" style="color:var(${tp.c})"></td>`).join("")}</tr></tfoot>
     </table></div>
     <p class="note">Una prenda completa lleva frente, espalda y 2 mangas. Pulsa Enter para deseleccionar la casilla.</p>
@@ -1023,7 +1077,12 @@ function renderEditor(){
   </div></div>`;
   refrescarEditor();
 }
-function tiposOrden(){const ks=TIPOS.map(t=>t.k);const o=(S.ajustes.orden||[]).filter(k=>ks.includes(k));ks.forEach((k,i)=>{if(o.includes(k))return;const prev=i>0?o.indexOf(ks[i-1]):-1;o.splice(prev+1,0,k)});return o.map(k=>TIPOS.find(t=>t.k===k))}
+function tiposOrden(){
+  const ks=Object.keys(TIPOS_PEDIDO);
+  const o=[...new Set((S.ajustes.orden||[]).map(k=>LEGADOS[k]||k).filter(k=>ks.includes(k)))];
+  ks.forEach((k,i)=>{if(!o.includes(k))o.splice(i?o.indexOf(ks[i-1])+1:0,0,k)});
+  return o.map(k=>TIPOS_PEDIDO[k]);
+}
 function ordenCambiado(){return tiposOrden().map(t=>t.k).join()!==TIPOS.map(t=>t.k).join()}
 /* ficha predeterminada: tela, cuello, hilo y detalles con los que empiezan los clientes nuevos */
 function botonesFicha(R){return `${S.ajustes.fichaDef&&!fichaIgual(R)?`<button class="lk" type="button" id="fichaUsar" title="Poner la tela, cuello, hilo y detalles predeterminados en este cliente">Usar predeterminado</button>`:""}<button class="lk" type="button" id="fichaDef" title="Los clientes nuevos empezarán con esta tela, cuello, hilo y detalles">${S.ajustes.fichaDef&&fichaIgual(R)?"✓ Es el predeterminado":"Guardar como predeterminado"}</button>`}
@@ -1038,9 +1097,8 @@ function refrescarEditor(){
   const a=alertasCliente(cl);
   $("ed-alertas").innerHTML=(a.length?a.map(x=>`<div class="al ${x.lv}"><span class="k">${x.lv==="err"?"Error":"Revisar"}</span><span class="tx">${x.tx}</span>${x.fix?`<button class="btn sm" data-fix="${x.fix}">Convertir en completas</button>`:""}${x.fixsm?`<button class="btn sm" data-fixsm="${x.fixsm}">Convertir en franelillas</button>`:""}${x.id?`<button class="btn sm" data-okal="${x.id}" title="El pedido es correcto así; ocultar este aviso">Confirmar</button>`:""}</div>`).join(""):`<div class="al ok"><span class="k">Bien</span><span class="tx">Todas las prendas de este cliente tienen sus piezas completas.</span></div>`)
     +(a.confirmados?`<p class="note confs">${a.confirmados} aviso${a.confirmados>1?"s":""} confirmado${a.confirmados>1?"s":""}. <button class="lk" data-okreset>Volver a mostrar</button></p>`:"");
-  const ft={};TIPOS.forEach(tp=>ft[tp.k]=0);let Pt=0;
-  TALLAS.forEach(t=>{const p=piezas(cl,t);TIPOS.forEach(tp=>ft[tp.k]+=tp.k==="SH"?p.SH+p.SHp:p[tp.k]);const tot=p.fr+p.es+p.mc+p.ml+p.mq+p.sh;Pt+=tot;const c=$("pt-"+t);if(c)c.textContent=tot||""});
-  TIPOS.forEach(tp=>$("ft-"+tp.k).textContent=ft[tp.k]);
+  const tot=sumCliente(cl);
+  TIPOS.forEach(tp=>$("ft-"+tp.k).textContent=tot[tp.k]);
   document.querySelectorAll("#grid td[data-k]").forEach(td=>{const t=td.parentElement.dataset.t,k=td.dataset.k;const v=cl.q[t]&&cl.q[t][k];
     td.classList.toggle("has",!!v);td.classList.toggle("bad",a.some(x=>x.lv==="err"&&x.t===t&&x.k===k));
     td.classList.toggle("w",a.some(x=>x.lv==="warn"&&x.t===t&&(x.k===k||(x.k==="F"&&(k==="F"||k==="E")))))});
@@ -1049,32 +1107,42 @@ function refrescarEditor(){
 /* ---------- resumen ---------- */
 const th=(tx,c)=>`<th${c?` style="color:var(${c})"`:""}>${tx}</th>`;
 const cell=(v,strong)=>`<td class="num"${strong?' style="font-weight:800"':""}>${v||"·"}</td>`;
-/* columnas del resumen en el mismo orden que la tabla de pedidos */
-function columnasTalla(){const out=[];let vistas=0;
-  const D={C:[{h:"Franela",c:"--t-corta",f:r=>r.C}],L:[{h:"Suéter",c:"--t-larga",f:r=>r.L}],SM:[{h:"Franelilla",c:"--t-info",f:r=>r.SM}],FE:[{h:"Frente y espalda",c:"--t-fe",f:r=>r.FE}],
-    F:[{h:"Solo frente",c:"--t-frente",f:r=>r.F}],E:[{h:"Solo espalda",c:"--t-espalda",f:r=>r.E}],MC:[{h:"Mangas cortas (unid.)",c:"--t-manga",f:r=>r.mcU}],MQ:[{h:"Mangas cortas chemis (unid.)",c:"--t-mchemis",f:r=>r.mqU}],
-    ML:[{h:"Mangas largas (unid.)",c:"--t-mlarga",f:r=>r.mlU}],SH:[{h:"Shorts",c:"--t-short",f:r=>r.SH},{h:"Pz. short sueltas",c:"--t-short",f:r=>r.SHp}]};
-  tiposOrden().forEach(t=>{out.push(...D[t.k]);if(t.k==="C"||t.k==="L"){vistas++;if(vistas===2)out.push({h:"Total completas",f:r=>r.C+r.L,b:1})}});return out}
-function columnasCliente(){const out=[],ya=new Set();
-  const D={C:"comp",L:"comp",MC:"mang",ML:"mang",MQ:"mang"};
-  const G={comp:{h:"Completas",c:"--t-larga",f:s=>s.C+s.L},mang:{h:"Mangas (unid.)",c:"--t-manga",f:s=>s.mcU+s.mlU+s.mqU},
-    SM:{h:"Franelillas",c:"--t-info",f:s=>s.SM},FE:{h:"Frente y espalda",c:"--t-fe",f:s=>s.FE},F:{h:"Solo frente",c:"--t-frente",f:s=>s.F},E:{h:"Solo espalda",c:"--t-espalda",f:s=>s.E},
-    SH:{h:"Shorts",c:"--t-short",f:s=>s.SH+(s.SHp?` +${s.SHp}pz`:"")}};
-  tiposOrden().forEach(t=>{const g=D[t.k]||t.k;if(!ya.has(g)){ya.add(g);out.push(G[g])}});return out}
-/* resumen por talla en tarjetas: una tarjeta por talla con sus prendas */
-const ORDEN_RES=["CL","E","SH","SHp","MCp","MLp","MQp","F"];
+function columnasCliente(){
+  const grupos={
+    C:"comp",L:"comp",CH:"comp",CHL:"comp",MCP:"mang",MQP:"mang",MLP:"mang",MCU:"mang",MQU:"mang",MLU:"mang",SHC:"short",SHP:"short"
+  };
+  const grupo={
+    comp:{h:"Completas",c:"--t-larga",f:completas},
+    mang:{h:"Mangas (unid.)",c:"--t-manga",f:mangasAdicionales},
+    short:{h:"Shorts",c:"--t-short",f:resumenShort}
+  };
+  const orden=[...new Set(tiposOrden().map(({k})=>grupos[k]||k))];
+  return orden.map(k=>grupo[k]||{h:TIPOS_PEDIDO[k].n,c:TIPOS_PEDIDO[k].c,f:s=>s[k]});
+}
+function resumenShort(s){return s.SHC+(s.SHP?` +${s.SHP}pz`:"")}
+const ORDEN_RES=["CL","CLQ","E","SH","SHp","MCp","MLp","MQp","MQLp","F"];
 function ordenResumen(){const g=(S.ajustes.ordenResumen||[]).map(k=>k==="C"||k==="L"||k==="SM"?"CL":k).filter((k,i,a)=>a.indexOf(k)===i);const o=g.filter(k=>ORDEN_RES.includes(k));ORDEN_RES.forEach(k=>{if(!o.includes(k))o.push(k)});return o}
 let colsRes=[];
-function tarjetasTalla(rows,pt,tot){
-  if(!rows.length)return `<p class="note">Todavía no hay prendas cargadas.</p>`;
-  const T=k=>TIPOS.find(t=>t.k===k);
-  const par=v=>`${Math.floor(v/2)}${v%2?`<small class="suelta" title="Queda una manga sin pareja">+1</small>`:""}`;
-  /* pares de mangas: las de franelas y suéters (2 por prenda) más las sueltas */
-  const D={CL:{c:"--t-larga",ic:"pila",n:"Frentes con espaldas",u:"",f:r=>r.C+r.L+r.SM+r.FE},SM:{c:T("SM").c,ic:T("SM").ic,n:"Franelillas",u:"",f:r=>r.SM},
-    E:{c:T("E").c,ic:T("E").ic,n:"Solo espalda",u:"",f:r=>r.E},SH:{c:T("SH").c,ic:"short",n:"Shorts",u:"",f:r=>r.SH},
-    SHp:{c:T("SH").c,ic:"short",n:"Piezas de short",u:"sueltas",f:r=>r.SHp},
-    MCp:{c:T("MC").c,ic:"mcorta",n:"Mangas cortas",u:"pares",f:r=>r.mc,v:r=>par(r.mc)},MQp:{c:T("MQ").c,ic:"mchemis",n:"Mangas cortas chemis",u:"pares",f:r=>r.mq,v:r=>par(r.mq)},MLp:{c:T("ML").c,ic:"mlarga",n:"Mangas largas",u:"pares",f:r=>r.ml,v:r=>par(r.ml)},
-    F:{c:T("F").c,ic:T("F").ic,n:"Solo frente",u:"",f:r=>r.F}};
+function tarjetasTalla(rows,pt){
+  if(!rows.length){colsRes=[];return `<p class="note">Todavía no hay prendas cargadas.</p>`}
+  const T=k=>TIPOS_PEDIDO[k];
+  const par=(pares,sueltas)=>`${pares}${sueltas?`<small class="suelta" title="${sueltas} en unidades sueltas">+${sueltas}</small>`:""}`;
+  const manga=(k,unid,prenda,pieza)=>({
+    c:T(k).c,ic:T(k).ic,n:T(k).n,u:"pares",
+    f:r=>r[pieza],v:r=>par(r[prenda]+r[k],r[unid])
+  });
+  const D={
+    CL:{c:"--t-larga",ic:"pila",n:"Frentes con espaldas",f:r=>r.C+r.L+r.SM+r.FE},
+    CLQ:{c:T("CH").c,ic:"fyespchemis",n:"Frente y espalda chemis",f:r=>r.CH+r.CHL},
+    E:{c:T("E").c,ic:T("E").ic,n:"Solo espalda",f:r=>r.E},
+    SH:{c:T("SHC").c,ic:"short",n:"Shorts",f:r=>r.SHC},
+    SHp:{c:T("SHP").c,ic:T("SHP").ic,n:"Piezas de short",u:"sueltas",f:r=>r.SHP},
+    MCp:manga("MCP","MCU","C","mc"),
+    MLp:manga("MLP","MLU","L","ml"),
+    MQp:manga("MQP","MQU","CH","mq"),
+    MQLp:{c:T("CHL").c,ic:"mlargachemisPar",n:"Mangas largas chemis",u:"pares",f:r=>r.mql,v:r=>r.CHL},
+    F:{c:T("F").c,ic:T("F").ic,n:"Solo frente",f:r=>r.F}
+  };
   const cols=ordenResumen().map(id=>Object.assign({id},D[id])).filter(d=>rows.some(x=>d.f(pt[x])));colsRes=cols;
   const cab=`<thead><tr><th class="ptal">Talla</th>${cols.map(d=>`<th data-rcol="${d.id}" style="--c:var(${d.c})"><div class="ph rdrag" title="Arrastra para mover la columna">${chip(d.ic,d.c,1)}<span class="pl${d.id==="MCp"||d.id==="MLp"?" una":""}">${d.n}</span>${d.u?`<small>${d.u}</small>`:""}</div></th>`).join("")}</tr></thead>`;
   const fila=x=>`<tr data-talla="${x}" title="Ver clientes de la talla ${x}"${x==="XS"?' class="corte"':""}><th><span class="tbadge">${x}</span></th>${cols.map(d=>{const v=d.f(pt[x]);
@@ -1082,22 +1150,21 @@ function tarjetasTalla(rows,pt,tot){
   return `<div class="pwrap"><table class="ptt" id="tlt">${cab}<tbody>${rows.map(fila).join("")}</tbody></table></div>`;
 }
 function renderResumen(){
-  const CT=columnasTalla(),CC=columnasCliente();
+  const CC=columnasCliente();
   const pt=porTalla();const rows=TALLAS.filter(t=>pt[t].total>0);
-  const tot={};["C","L","SM","F","E","mcU","mlU","mqU","SH","SHp","fr","es","mc","ml","mq","sh","total"].forEach(k=>tot[k]=rows.reduce((s,t)=>s+pt[t][k],0));
+  const tot=totales(S.clientes);
   const clientes=S.clientes.map(cl=>({cl,s:sumCliente(cl)})).filter(x=>x.s.total);
   $("v-resumen").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
   <div class="toolbar"><div class="sec">${ico("resumen")}Resumen del pedido actual</div><button class="btn" id="exportar">${ico("dl")}Descargar CSV</button></div>
   ${cantidadesIncorrectas(S.clientes)?`<p class="al err" role="alert">${MENSAJE_CANTIDADES}</p>`:""}
   <div id="csvBox" hidden></div>
   <div class="card edge" style="--c:var(--t-larga)"><div class="toolbar"><div class="sec" style="font-size:12px">Prendas por talla</div>${rows.length&&S.ajustes.ordenResumen&&ordenResumen().join()!==ORDEN_RES.join()?`<button class="lk" type="button" id="resReset">Restablecer orden de columnas</button>`:""}</div>
-  ${tarjetasTalla(rows,pt,tot)}
+  ${tarjetasTalla(rows,pt)}
   </div>
   <div class="card edge" style="--c:var(--accent)"><div class="sec" style="font-size:12px">Piezas a imprimir por talla</div>
-  ${rows.length?`<div class="gridwrap"><table class="rt"><thead><tr><th>Talla</th>${th("Frentes","--t-frente")}${th("Espaldas","--t-espalda")}${th("Mangas cortas","--t-manga")}${th("Mangas largas","--t-mlarga")}${th("Mangas chemis","--t-mchemis")}${th("Piezas short","--t-short")}${th("Total piezas")}</tr></thead>
-  <tbody>${rows.map(t=>{const r=pt[t];return `<tr><th>${t}</th>${cell(r.fr)}${cell(r.es)}${cell(r.mc)}${cell(r.ml)}${cell(r.mq)}${cell(r.sh)}${cell(r.total,1)}</tr>`}).join("")}</tbody>
-  <tfoot><tr><th>Total</th>${cell(tot.fr,1)}${cell(tot.es,1)}${cell(tot.mc,1)}${cell(tot.ml,1)}${cell(tot.mq,1)}${cell(tot.sh,1)}${cell(tot.total,1)}</tr></tfoot></table></div>`:`<p class="note">Todavía no hay prendas cargadas.</p>`}
-  ${tot.SH?`<label class="chk">Piezas por short <input id="pzShort" type="number" min="1" step="1" value="${S.ajustes.piezasShort}" style="width:64px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);padding:5px 8px"></label>`:""}
+  ${rows.length?`<div class="gridwrap"><table class="rt"><thead><tr><th>Talla</th>${PIEZAS.map(p=>th(p.n,p.c)).join("")}${th("Total piezas")}</tr></thead>
+  <tbody>${rows.map(t=>`<tr><th>${t}</th>${PIEZAS.map(p=>cell(pt[t][p.k])).join("")}${cell(pt[t].total,1)}</tr>`).join("")}</tbody>
+  <tfoot><tr><th>Total</th>${PIEZAS.map(p=>cell(tot[p.k],1)).join("")}${cell(tot.total,1)}</tr></tfoot></table></div>`:`<p class="note">Todavía no hay prendas cargadas.</p>`}
   </div>
   <div class="card edge" style="--c:var(--t-info)"><div class="sec" style="font-size:12px">Por cliente</div>
   ${clientes.length?`<div class="gridwrap"><table class="rt"><thead><tr><th>Cliente</th><th>Pedido</th><th>Entrega</th>${CC.map(c=>th(c.h,c.c)).join("")}${th("Piezas")}</tr></thead>
@@ -1106,30 +1173,13 @@ function renderResumen(){
 }
 
 /* ---------- hoja de producción ---------- */
-function llevaPorPrenda(cl,s){
-  const R=cl.req||{};const ex=R.extras||[];const nm=k=>det(k).n;
-  const cam=ex.filter(k=>{const p=det(k).p;return p==="camisa"||p==="todo"}).map(nm);
-  const lar=ex.filter(k=>det(k).p==="larga").map(nm);
-  const sho=ex.filter(k=>{const p=det(k).p;return p==="short"||p==="todo"}).map(nm);
-  const ps=S.ajustes.piezasShort;const it=[];
-  const mas=a=>a.length?" + "+a.join(", ").toLowerCase():"";
-  if(s.C) it.push({ic:"corta",c:"--t-corta",n:`Franela × ${s.C}`,d:`Frente, espalda y 2 mangas cortas${mas(cam)}`});
-  if(s.L) it.push({ic:"larga",c:"--t-larga",n:`Suéter × ${s.L}`,d:`Frente, espalda y 2 mangas largas${mas(cam.concat(lar))}`});
-  if(s.FE) it.push({ic:"fyesp",c:"--t-fe",n:`Frente y espalda × ${s.FE}`,d:"Frente y espalda de la misma prenda"});
-  if(s.SM) it.push({ic:"franelilla",c:"--t-info",n:`Franelilla × ${s.SM}`,d:`Frente y espalda: coser hombros y costados, sin mangas${mas(cam)}`});
-  if(s.F) it.push({ic:"frente",c:"--t-frente",n:`Solo frente × ${s.F}`,d:"Solo la pieza delantera, sin coser"});
-  if(s.E) it.push({ic:"espalda",c:"--t-espalda",n:`Solo espalda × ${s.E}`,d:"Solo la pieza trasera, sin coser"});
-  if(s.mqU) it.push({ic:"mchemis",c:"--t-mchemis",n:`Mangas cortas chemis × ${s.mqU}`,d:`Piezas sueltas (${s.mqU/2} pares)`});
-  if(s.mcU) it.push({ic:"mcorta",c:"--t-manga",n:`Mangas cortas × ${s.mcU}`,d:`Piezas sueltas (${s.mcU/2} pares)`});
-  if(s.mlU) it.push({ic:"mlarga",c:"--t-mlarga",n:`Mangas largas × ${s.mlU}`,d:`Piezas sueltas (${s.mlU/2} pares)${lar.length?" + puños":""}`});
-  if(s.SH) it.push({ic:"short",c:"--t-short",n:`Short × ${s.SH}`,d:`${ps} piezas c/u${mas(sho)}`});
-  if(s.SHp) it.push({ic:"short",c:"--t-short",n:`Piezas de short × ${s.SHp}`,d:"Piezas sueltas, sin armar"});
-  return it;
-}
+const nombreTipo=tp=>["pares","unidad","pieza"].includes(tp.s)||tp.k==="SHC"?
+  `${tp.n} (${tp.s})`:tp.n;
 function hojaDatos(cl){
-  const s=sumCliente(cl);const ts=TALLAS.filter(t=>cl.q[t]&&Object.keys(cl.q[t]).length);
-  const filas=tiposOrden().map(tp=>({tp,vals:ts.map(t=>{const p=piezas(cl,t);return tp.k==="MC"?p.mcU:tp.k==="ML"?p.mlU:tp.k==="MQ"?p.mqU:tp.k==="SH"?p.SH+p.SHp:p[tp.k]})})).filter(f=>f.vals.some(v=>v));
-  const pz=[["Frentes",s.fr,"--t-frente"],["Espaldas",s.es,"--t-espalda"],["Mangas cortas",s.mc,"--t-manga"],["Mangas largas",s.ml,"--t-mlarga"],["Mangas chemis",s.mq,"--t-mchemis"],["Piezas de short",s.sh,"--t-short"]].filter(x=>x[1]);
+  const s=sumCliente(cl);
+  const ts=TALLAS.filter(t=>cl.q[t]&&Object.keys(cl.q[t]).length);
+  const filas=tiposOrden().map(tp=>({tp,vals:ts.map(t=>q(cl,t,tp.k))})).filter(f=>f.vals.some(Boolean));
+  const pz=PIEZAS.filter(p=>s[p.k]);
   return {s,ts,filas,pz};
 }
 function prodClientes(){
@@ -1155,8 +1205,8 @@ function renderProduccion(){
         <div class="pder">
           <h2>${esc(cl.nombre||"Sin nombre")}</h2>
           <div class="gridwrap"><table class="rt ptab"><thead><tr><th style="text-align:left">Prenda</th>${ts.map(t=>`<th>${t}</th>`).join("")}<th>Total</th></tr></thead>
-            <tbody>${filas.map(f=>`<tr><th style="text-align:left;font-size:13px;color:var(${f.tp.c})">${f.tp.k==="MC"||f.tp.k==="ML"||f.tp.k==="MQ"?f.tp.n+" (unid.)":f.tp.k==="SH"&&cl.modoShort==="pz"?"Piezas de short":f.tp.n}</th>${f.vals.map(v=>cell(v)).join("")}${cell(f.vals.reduce((a,b)=>a+b,0),1)}</tr>`).join("")}</tbody></table></div>
-          <div class="meta">${pz.map(x=>`<span class="pill" style="color:var(${x[2]})">${x[0]}: <b>${x[1]}</b></span>`).join("")}<span class="pill tot">Total de piezas: <b>${s.total}</b></span></div>
+            <tbody>${filas.map(f=>`<tr><th style="text-align:left;font-size:13px;color:var(${f.tp.c})">${nombreTipo(f.tp)}</th>${f.vals.map(v=>cell(v)).join("")}${cell(f.vals.reduce((a,b)=>a+b,0),1)}</tr>`).join("")}</tbody></table></div>
+          <div class="meta">${pz.map(p=>`<span class="pill" style="color:var(${p.c})">${p.n}: <b>${s[p.k]}</b></span>`).join("")}<span class="pill tot">Total de piezas: <b>${s.total}</b></span></div>
         </div>
       </div>
       <div class="pinfo">
@@ -1170,16 +1220,17 @@ function renderProduccion(){
 async function aDataURL(url){try{const r=await fetch(url);if(!r.ok)return null;const b=await r.blob();return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res(null);fr.readAsDataURL(b)})}catch(e){return null}}
 /* hoja de producción en formato compacto con paginación según el contenido */
 async function construirHoja(elegidos){
-  const col={C:"#0891b2",L:"#7c3aed",FE:"#92400e",SM:"#2563eb",F:"#db2777",E:"#d97706",MC:"#0d9488",ML:"#4f46e5",MQ:"#c2410c",SH:"#4d7c0f"};
+  const col={"--t-corta":"#0891b2","--t-larga":"#7c3aed","--t-fe":"#92400e","--t-info":"#2563eb","--t-frente":"#db2777","--t-espalda":"#d97706","--t-manga":"#0d9488","--t-mlarga":"#4f46e5","--t-mchemis":"#c2410c","--t-short":"#4d7c0f"};
   let body="";
   const pedidos=elegidos.map(cl=>({cl,...hojaDatos(cl),detalles:(cl.req?.extras||[]).map(k=>det(k).n)}));
-  for(const {cl,s,ts,filas,detalles} of pedidos){
+  for(const {cl,s,ts,filas,pz,detalles} of pedidos){
     const r=cl.req||{};
     const img=await srcDe(cl.img); /* la hoja usa siempre la foto de Pedidos */
     if(tieneImg(cl.img)&&!img)throw new Error("No se pudo cargar el diseño de "+(cl.nombre||"un cliente")+".");
     body+=`<section><div class="im">${img?`<img src="${esc(img)}">`:"<span>Sin imagen</span>"}</div><div class="inf">
       <div class="cab"><div class="nm"><h2>${esc(cl.nombre||"Sin nombre")}</h2><span class="tp">Total de piezas: <b>${s.total}</b></span></div><span>Pedido: <b>${cl.pedido?fecha(cl.pedido):"—"}</b> · Entrega: <b>${cl.entrega?fecha(cl.entrega):"—"}</b></span></div>
-      <table><tr><th class="pr">Prenda</th>${ts.map(t=>`<th>T-${t}</th>`).join("")}<th>Total</th></tr>${filas.map(f=>`<tr><td class="pr" style="color:${col[f.tp.k]}">${f.tp.k==="MQ"?"Mangas chemis (unid.)":f.tp.k==="MC"||f.tp.k==="ML"?f.tp.n+" (unid.)":f.tp.k==="SH"&&cl.modoShort==="pz"?"Piezas de short":f.tp.n}</td>${f.vals.map(v=>`<td>${v||""}</td>`).join("")}<td><b>${f.vals.reduce((a,b)=>a+b,0)}</b></td></tr>`).join("")}</table>
+      <table><tr><th class="pr">Prenda</th>${ts.map(t=>`<th>T-${t}</th>`).join("")}<th>Total</th></tr>${filas.map(f=>`<tr><td class="pr" style="color:${col[f.tp.c]}">${nombreTipo(f.tp)}</td>${f.vals.map(v=>`<td>${v||""}</td>`).join("")}<td><b>${f.vals.reduce((a,b)=>a+b,0)}</b></td></tr>`).join("")}</table>
+      <p class="desglose">${pz.map(p=>`${p.n}: <b>${s[p.k]}</b>`).join(" · ")}</p>
       <div class="bx"><div><b>Tela:</b> <span>${esc(r.tela||"—")}</span></div><div><b>Cuello:</b> <span>${esc(r.cuello||"—")}</span></div><div><b>Hilo:</b> <span>${esc(r.hilo||"—")}</span></div>
         <div class="w"><b>Detalles:</b> <span>${detalles.length?detalles.map(esc).join(", "):"—"}</span></div>
         <div class="w ind"><b>Indicaciones:</b> <span>${r.notas?esc(r.notas).replace(/\n/g," "):"—"}</span></div></div></div></section>`;
@@ -1190,6 +1241,7 @@ async function construirHoja(elegidos){
 *{box-sizing:border-box}
 body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:0 .6mm;font-size:10px}
 .encab{display:flex;justify-content:flex-start;gap:4mm;align-items:baseline;border-bottom:2px solid #111;padding-bottom:2mm;margin-bottom:2mm}
+.desglose{margin:1mm 0;line-height:1.3}
 .encab h1{font-size:14px;margin:0;text-transform:uppercase;letter-spacing:.05em}
 section{display:flex;gap:5mm;min-height:61mm;border:1px solid #bbb;border-left:1.2mm solid #7c3aed;border-radius:2mm;padding:3mm 4mm 3mm 3mm;margin:0 0 2.5mm;break-inside:avoid;page-break-inside:avoid}
 .im{width:55mm;height:55mm;flex:none;border:1px dashed #bbb;border-radius:1.5mm;display:flex;align-items:center;justify-content:center;color:#999;font-size:9px}
@@ -1205,7 +1257,7 @@ section{display:flex;gap:5mm;min-height:61mm;border:1px solid #bbb;border-left:1
 table{border-collapse:collapse;width:100%;table-layout:fixed}
 th,td{border:1px solid #ccc;padding:1.2mm .5mm;text-align:center;font-size:10px}
 th{background:#e9ebef;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-th.pr,td.pr{width:36mm;text-align:left;font-weight:700;padding-left:1.5mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+th.pr,td.pr{width:36mm;text-align:left;font-weight:700;padding-left:1.5mm;overflow-wrap:anywhere}
 p{margin:0}
 .pz{font-size:12.5px}
 .pz b{font-size:13px}
@@ -1255,12 +1307,12 @@ function datosLote(){
   const con=S.clientes.filter(c=>sumCliente(c).total>0);
   if(!con.length||cantidadesIncorrectas(S.clientes))return null;
   return {portadaCli:con.some(c=>c.id===S.portadaCli)?S.portadaCli:null,ajustes:structuredClone(S.ajustes),
-    clientes:structuredClone(con),resumen:resumirLote(con,S.ajustes)};
+    clientes:structuredClone(con),resumen:resumirLote(con)};
 }
-function resumirLote(clientes,ajustes){
-  const t=totales(clientes,ajustes);
-  return {clientes:clientes.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,
-    mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total};
+function resumirLote(clientes){
+  const t=totales(clientes);
+  return {clientes:clientes.length,completas:completas(t),franelillas:t.SM,frentes:t.F,espaldas:t.E,
+    mangas:mangasAdicionales(t),shorts:t.SHC,piezas:t.total};
 }
 function leerLote(l){
   const ajustes=normAj(structuredClone(l.ajustes));
@@ -1451,14 +1503,14 @@ function renderHistorial(){
   const ls=[...LOTES].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")||(b.creado||0)-(a.creado||0));
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
   <div class="toolbar"><div class="sec">${ico("historial")}Historial de lotes <small>${ls.length} guardado${ls.length===1?"":"s"}</small></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="resExp">${ico("dl")}Exportar respaldo</button><button class="btn" id="resImp">${ico("historial")}Importar respaldo</button>${hayRecuperacion?`<button class="btn" id="resRec">Restaurar estado anterior</button>`:""}<button class="btn primary" id="hLote">${ico("guardar")}Guardar lote actual</button></div></div>
-  ${ls.length?`<div class="lotes">${ls.map(l=>{const {clientes,ajustes}=leerLote(l);const r=resumirLote(clientes,ajustes);
+  ${ls.length?`<div class="lotes">${ls.map(l=>{const {clientes}=leerLote(l);const r=resumirLote(clientes);
     const im=portadaLote(l).imagen;
     const thumb=`<div class="lthumb" data-lote="${l.id}">${im?imgTag(im,"",`loading="lazy"`):ico("img")}
       <div class="lacts"><button class="lact" data-pcam="${l.id}" title="${im?"Cambiar imagen":"Agregar imagen"}" aria-label="${im?"Cambiar imagen":"Agregar imagen"}">${ico("img")}</button>${im?`<button class="lact del" data-pdel="${l.id}" title="Quitar imagen" aria-label="Quitar imagen">${ico("reset")}</button>`:""}</div></div>`;
     return `<article class="card edge lote" style="--c:var(--accent)"><div class="ltop"><div class="linfo">
     <div>${renLote===l.id?`<div class="lren"><input id="lrenIn" value="${esc(nombreLotePendiente)}" aria-label="Nuevo nombre del lote" autocomplete="off" ${renombrandoLote?"disabled":""}><button class="ib ok" id="lrenOk" title="Confirmar nombre" aria-label="Confirmar nombre" ${renombrandoLote?"disabled":""}>${ico("check")}</button></div>`:`<h3 data-ren="${l.id}" title="Doble clic para cambiar el nombre">${esc(l.nombre)}</h3>`}<span class="note">${ico("cal").replace("<svg",'<svg width="13" height="13" style="vertical-align:-2px"')} ${fecha(l.fecha)}</span>${S.loteActivo===l.id?`<span class="encurso">En curso · se guarda solo</span>`:""}</div>
     <div class="stats"><span><b class="num">${r.clientes}</b>clientes</span><span><b class="num">${r.completas}</b>completas</span><span><b class="num">${r.frentes}</b>frentes</span><span><b class="num">${r.piezas}</b>piezas</span></div>
-    ${cantidadesIncorrectas(clientes,ajustes)?'<p class="note">Hay cantidades antiguas que requieren revisión.</p>':""}
+    ${cantidadesIncorrectas(clientes)?'<p class="note">Hay cantidades antiguas que requieren revisión.</p>':""}
     </div>${thumb}</div>
     <div class="lbtns">
       <button class="btn sm" data-lv="${l.id}">Ver detalle</button>
@@ -1527,9 +1579,9 @@ $("editor").addEventListener("input",e=>{
   if(t.id==="f-entrega"){cl.entrega=t.value;changed();return}
   if(t.id==="f-pedido"){cl.pedido=t.value;changed();return}
   if(REQ[t.id]){cl.req[REQ[t.id]]=t.value;changed(1);pintarFicha();return}
-  const m=t.id.match(/^c-(.+)-(C|L|FE|SM|F|E|MC|ML|MQ|SH)$/);
-  if(m){
-    const [,talla,tipo]=m, raw=t.value;
+  const td=t.closest("#grid td[data-k]");
+  if(td){
+    const talla=td.parentElement.dataset.t, tipo=td.dataset.k, raw=t.value;
     const v=t.validity.badInput?NaN:raw===""?0:leerCantidad(raw);
     if(!aplicarCantidades(cl,[[talla,tipo,v]])){t.setAttribute("aria-invalid","true");return}
     t.removeAttribute("aria-invalid");
@@ -1552,24 +1604,6 @@ $("editor").addEventListener("focusout",e=>{
   campo.removeAttribute("aria-invalid");
 });
 $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel);if(!cl)return;const b=e.target.closest("button");if(!b)return;const id=b.id;
-  if(id==="m-par"||id==="m-ind"){
-    cerrarGrupo();
-    const par=id==="m-par";
-    if(cambiarUnidad(cl,"modoManga",par?"par":"ind",TIPOS_MANGA,v=>par?v/2:v*2,
-      par?"hay una manga sin pareja en al menos una columna. Completa el par o conserva las unidades.":"la cantidad de mangas supera el límite de cálculo.")){
-      renderTodo();changed();
-    }
-    return;
-  }
-  if(id==="s-comp"||id==="s-pz"){
-    cerrarGrupo();
-    const completo=id==="s-comp", ps=S.ajustes.piezasShort;
-    if(cambiarUnidad(cl,"modoShort",completo?"comp":"pz",["SH"],v=>completo?v/ps:v*ps,
-      completo?"la cantidad de piezas debe ser múltiplo de "+ps+" para usar shorts completos.":"la cantidad de piezas de short supera el límite de cálculo.")){
-      renderTodo();changed();
-    }
-    return;
-  }
   if(id==="up"){$("fileImg").click();return}
   if(id==="noimg"){ponerImgCliente(cl.id,null);return}
   if(id==="ordReset"){S.ajustes.orden=null;renderEditor();renderResumen();renderProduccion();changed();toast("Orden de columnas restablecido.",{txt:"Deshacer",fn:deshacer});return}
@@ -1577,7 +1611,7 @@ $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel)
   if(id==="fichaUsar"){const d=S.ajustes.fichaDef;Object.assign(cl.req,JSON.parse(JSON.stringify(d)));renderEditor();renderProduccion();changed();return}
   if(b.dataset.adm){abrirAdm(b.dataset.adm,b);return}
   if(b.dataset.ex){const k=b.dataset.ex;const ex=cl.req.extras;const i=ex.indexOf(k);if(i>=0)ex.splice(i,1);else ex.push(k);b.setAttribute("aria-pressed",i<0);renderProduccion();changed();pintarFicha();return}
-  if(b.dataset.okal){const id=b.dataset.okal;const [ty,t]=id.split(":");cl.ok=cl.ok||{};cl.ok[id]=firma(cl,t,ty);
+  if(b.dataset.okal){const id=b.dataset.okal;const [,t]=id.split(":");cl.ok=cl.ok||{};cl.ok[id]=firma(cl,t);
     refrescarLigero();changed();toast("Aviso confirmado.",{txt:"Deshacer",fn:deshacer});return}
   if(b.hasAttribute("data-okreset")){cl.ok={};refrescarLigero();changed();return}
   if(b.dataset.fixsm){const t=b.dataset.fixsm;let F=q(cl,t,"F"),E=q(cl,t,"E"),SM=q(cl,t,"SM");const n=Math.min(F,E);
@@ -1585,13 +1619,19 @@ $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel)
     cerrarGrupo();
     if(!aplicarCantidades(cl,[[t,"SM",SM+n],[t,"F",F-n],[t,"E",E-n]]))return;
     renderEditor();refrescarLigero();changed();toast(`${n} franelilla${n>1?"s":""} en talla ${t}.`,{txt:"Deshacer",fn:deshacer});return}
-  if(b.dataset.fix){const t=b.dataset.fix;const k=cl.modoManga==="par"?1:2;
+  if(b.dataset.fix){const t=b.dataset.fix;
     if(cantidadesIncorrectas([cl])){toast(MENSAJE_CANTIDADES);return}
     cerrarGrupo();
-    let F=q(cl,t,"F"),E=q(cl,t,"E"),MC=q(cl,t,"MC"),ML=q(cl,t,"ML"),C=q(cl,t,"C"),L=q(cl,t,"L");
-    let n=Math.min(F,E,Math.floor(MC/k));C+=n;F-=n;E-=n;MC-=n*k;
-    let m2=Math.min(F,E,Math.floor(ML/k));L+=m2;F-=m2;E-=m2;ML-=m2*k;
-    const cambios=[["C",C],["L",L],["F",F],["E",E],["MC",MC],["ML",ML]].map(([tipo,v])=>[t,tipo,v]);
+    let F=q(cl,t,"F"),E=q(cl,t,"E");
+    const cambios=[];
+    for(const {par,unid,prenda} of MANGAS.filter(m=>m.prenda==="C"||m.prenda==="L")){
+      const pares=q(cl,t,par),sueltas=q(cl,t,unid);
+      const n=Math.min(F,E,pares+Math.floor(sueltas/2));
+      const paresUsados=Math.min(n,pares);
+      cambios.push([t,prenda,q(cl,t,prenda)+n],[t,par,pares-paresUsados],[t,unid,sueltas-2*(n-paresUsados)]);
+      F-=n;E-=n;
+    }
+    cambios.push([t,"F",F],[t,"E",E]);
     if(!aplicarCantidades(cl,cambios))return;
     renderEditor();refrescarLigero();changed();}
 });
@@ -1783,25 +1823,16 @@ $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("bu
       renderHistorial();pintarLote();pintarGuardado();vigilarSalida();toast("Lote eliminado.");
     }catch(err){b.disabled=false;toast("No se pudo eliminar el lote. Intenta de nuevo.")}}
 });
-$("v-resumen").addEventListener("change",e=>{
-  const campo=e.target;if(campo.id!=="pzShort")return;
-  const v=leerCantidad(campo.value);
-  const aj={...S.ajustes,piezasShort:v};
-  if(!cantidadValida(v)||!v||!cantidadValida(totales(S.clientes,aj).total)){
-    campo.value=S.ajustes.piezasShort;
-    toast("Indica un número entero de piezas por short, desde 1 y dentro del límite de cálculo.");
-    return;
-  }
-  if(v===S.ajustes.piezasShort)return;
-  cerrarGrupo();S.ajustes=aj;renderTodo();changed();
-});
 $("v-resumen").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.id==="resReset"){S.ajustes.ordenResumen=null;renderResumen();changed();return}
   if(b.id==="copiar"){const ta=$("csvTxt");navigator.clipboard.writeText(ta.value).then(()=>b.textContent="Copiado").catch(()=>{ta.focus();ta.select()});return}
   if(b.id!=="exportar")return;
   if(cantidadesIncorrectas(S.clientes)){toast(MENSAJE_CANTIDADES);return}
-  const filas=[["Cliente","Fecha de pedido","Fecha de entrega","Talla","Franela","Suéter","Frente y espalda","Franelilla","Solo frente","Solo espalda","Mangas cortas (unid.)","Mangas largas (unid.)","Mangas chemis (unid.)","Shorts","Piezas de short sueltas","Frentes","Espaldas","Piezas manga corta","Piezas manga larga","Piezas manga chemis","Piezas short","Total piezas"]];
-  S.clientes.forEach(cl=>TALLAS.forEach(t=>{const p=piezas(cl,t);const tot=p.fr+p.es+p.mc+p.ml+p.mq+p.sh;if(tot)filas.push([cl.nombre,cl.pedido?fecha(cl.pedido):"",cl.entrega?fecha(cl.entrega):"",t,p.C,p.L,p.FE,p.SM,p.F,p.E,p.mcU,p.mlU,p.mqU,p.SH,p.SHp,p.fr,p.es,p.mc,p.ml,p.mq,p.sh,tot])}));
+  const filas=[["Cliente","Fecha de pedido","Fecha de entrega","Talla",...TIPOS.map(nombreTipo),...PIEZAS.map(p=>p.n),"Total piezas"]];
+  S.clientes.forEach(cl=>TALLAS.forEach(t=>{
+    const p=piezas(cl,t);
+    if(p.total)filas.push([cl.nombre,cl.pedido?fecha(cl.pedido):"",cl.entrega?fecha(cl.entrega):"",t,...CLAVES_TOTAL.map(k=>p[k])]);
+  }));
   const csv="﻿"+filas.map(r=>r.map(x=>{let s=String(x??"");
     if(typeof x==="string"&&/^(?:[\t\r\n]|\s*[=+@-])/.test(s))s="'"+s;
     return /[";\r\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}).join(";")).join("\n");
@@ -1986,7 +2017,7 @@ function fichaResp(d,ruta){
   for(const k of ["tela","cuello","hilo","notas"])opcionalResp(d,k,textoResp,ruta);
   opcionalResp(d,"extras",v=>listaResp(v,idResp),ruta);
 }
-const tiposResp=TIPOS.map(t=>t.k);
+const tiposResp=[...Object.keys(TIPOS_PEDIDO),...Object.keys(LEGADOS)];
 const avisosResp=["imparMQ","imparMC","imparML","shortpz","fem","femq","fe","solomangas"].flatMap(a=>TALLAS.map(t=>a+":"+t));
 function ajustesResp(a,ruta){
   camposResp(a,["piezasShort","listas","detalles","orden","ordenResumen","fichaDef"],ruta);
@@ -2181,7 +2212,9 @@ async function materializarRespaldo(obj){
   }
   const cambiarImg=im=>im?.ref?{lid:refs.get(im.ref),nombre:im.nombre||""}:im;
   const cambiarClientes=cs=>cs.map(c=>{
-    const copia=normCli({...c,req:{...c.req}});
+    // Conserva la forma canónica de los respaldos anteriores para reconocer lotes ya importados.
+    const copia=normCli({...c,q:structuredClone(c.q),req:{...c.req},
+      modoManga:c.modoManga||"par",modoShort:c.modoShort||"comp"});
     if(c.img)copia.img=cambiarImg(c.img);
     if(c.imgProd)copia.imgProd=cambiarImg(c.imgProd);
     return copia;
@@ -2448,9 +2481,9 @@ $("modal").addEventListener("click",e=>{const tr=e.target.closest("tr[data-abrir
 
 /* ---------- detalle de un lote en una ventana ---------- */
 function verLote(id,origen){const l=LOTES.find(x=>x.id===id);if(!l)return;
-  const {clientes,ajustes}=leerLote(l);
-  const filas=clientes.map(c=>{const s=sumCliente(c,ajustes);return `<tr><th style="text-align:left;font-size:13px">${esc(c.nombre)}</th><td class="num">${c.pedido?fecha(c.pedido):"·"}</td><td class="num">${c.entrega?fecha(c.entrega):"·"}</td>${cell(s.C+s.L)}${cell(s.SM)}${cell(s.F)}${cell(s.E)}${cell(s.mcU+s.mlU+s.mqU)}${cell(s.SH)}${cell(s.total,1)}</tr>`}).join("");
-  const r=resumirLote(clientes,ajustes);
+  const {clientes}=leerLote(l);
+  const filas=clientes.map(c=>{const s=sumCliente(c);return `<tr><th style="text-align:left;font-size:13px">${esc(c.nombre)}</th><td class="num">${c.pedido?fecha(c.pedido):"·"}</td><td class="num">${c.entrega?fecha(c.entrega):"·"}</td>${cell(completas(s))}${cell(s.SM)}${cell(s.F)}${cell(s.E)}${cell(mangasAdicionales(s))}${cell(resumenShort(s))}${cell(s.total,1)}</tr>`}).join("");
+  const r=resumirLote(clientes);
   $("modal").innerHTML=`<div class="card ancho" role="dialog" aria-modal="true" aria-labelledby="mt">
     <div class="toolbar"><div><h2 id="mt">${esc(l.nombre)}</h2><span class="note">${fecha(l.fecha)} · ${r.clientes||0} clientes · ${r.piezas||0} piezas</span></div><button class="btn" id="rs-no">Cerrar</button></div>
     <div class="gridwrap"><table class="rt"><thead><tr><th style="text-align:left">Cliente</th><th>Pedido</th><th>Entrega</th><th>Completas</th><th>Franelillas</th><th>Frentes</th><th>Espaldas</th><th>Mangas</th><th>Shorts</th><th>Piezas</th></tr></thead><tbody>${filas}</tbody></table></div></div>`;
