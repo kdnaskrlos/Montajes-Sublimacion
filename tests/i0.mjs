@@ -72,7 +72,7 @@ async function waitFor(check, description) {
   throw new Error('Tiempo agotado: ' + description);
 }
 
-async function page(context, path = '/app') {
+async function page(context, path = '/app', ready = "Boolean(document.querySelector('#save.ok'))") {
   const { targetId } = await send('Target.createTarget', { browserContextId: context, url: 'about:blank' });
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
   const command = (method, params) => send(method, params, sessionId);
@@ -86,11 +86,12 @@ async function page(context, path = '/app') {
   const wait = expression => waitFor(() => evaluate(expression), expression);
   let navigations = 0;
   const navigate = async () => {
-    const url = base + path + '?load=' + ++navigations;
+    const isFile = path.startsWith('file:');
+    const url = (isFile ? path : base + path) + '?load=' + ++navigations;
     const result = await command('Page.navigate', { url });
     assert.equal(result.errorText, undefined);
     await wait(`location.href === ${JSON.stringify(url)}`);
-    await wait(path.startsWith('/app') ? "Boolean(document.querySelector('#save.ok'))" : "document.readyState === 'complete' && !!document.querySelector('h1')");
+    await wait(path === '/hoja' ? "document.readyState === 'complete' && !!document.querySelector('h1')" : ready);
   };
   await command('Network.enable');
   await command('Network.setBlockedURLs', { urls: ['https://fonts.googleapis.com/*', 'https://fonts.gstatic.com/*'] });
@@ -161,11 +162,12 @@ async function check(name, run) {
 const stored = key => `JSON.parse(localStorage.getItem(${JSON.stringify(key)}))`;
 const orderQuantity = `${stored('montajes-sub')}?.clientes[0]?.q.M?.SM`;
 const lotQuantity = `${stored('montajes-lotes')}?.[0]?.clientes[0]?.q.M?.SM`;
-const editQuantity = value => `{
-  const input = document.querySelector('#c-M-SM');
+const editCell = (id, value) => `{
+  const input = document.getElementById(${JSON.stringify(id)});
   input.value = ${JSON.stringify(String(value))};
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }`;
+const editQuantity = value => editCell('c-M-SM', value);
 const beforeUnload = "window.dispatchEvent(new Event('beforeunload', { cancelable: true }))";
 
 async function blockWrite(p, key) {
@@ -657,8 +659,8 @@ try {
     await destino.wait(imageReady('#imgbox img'));
     assert.equal(await destino.evaluate("document.querySelector('#imgbox img').src"), expectedImage);
     await destino.view('historial');
-    await destino.wait(imageReady('.lthumb img'));
-    assert.equal(await destino.evaluate("document.querySelector('.lthumb img').src"), secondImage);
+    await destino.wait(imageReady('#v-historial .lthumb img'));
+    assert.equal(await destino.evaluate("document.querySelector('#v-historial .lthumb img').src"), secondImage);
     const [pedidos, lotes, tema] = (await estadoRespaldo(destino)).map((x, i) => i < 2 ? JSON.parse(x) : x);
     assert.equal(pedidos.portadaCli, pedidos.clientes[0].id);
     assert.equal(pedidos.loteActivo, lotes[0].id);
@@ -891,7 +893,8 @@ try {
     await importarI2(p, antiguo);
     const [datos, lotes, nuevoTema] = await estadoRespaldo(p);
     assert.equal(JSON.parse(datos).loteActivo, null);
-    assert.equal(JSON.parse(datos).clientes[0].q.M.MC, 0.5);
+    assert.equal(JSON.parse(datos).clientes[0].modoManga, 'ind');
+    assert.equal(JSON.parse(datos).clientes[0].q.M.MC, 1);
     assert.equal(JSON.parse(datos).clientes[0].q.M.L, -1);
     assert.equal(JSON.parse(lotes).length, 2);
     assert.deepEqual(JSON.parse(lotes)[0], previo);
@@ -970,6 +973,238 @@ try {
     await p.click('#exportar');
     const csv = await download('montajes-', carpeta);
     assert.match(await readFile(csv, 'utf8'), /'=1\+1;/);
+  });
+  await check('I3/I4 · Las cantidades inválidas no sustituyen los valores guardados ni llegan a producción', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    for (const valor of ['-3', '1.5', '1e3', '9007199254740993', '9007199254740991']) {
+      await p.evaluate(editQuantity(valor));
+      assert.match(await p.evaluate(toastText), /cantidad entera|límite de cálculo/);
+      assert.equal(await p.evaluate(orderQuantity), 2);
+      await p.evaluate("document.querySelector('#c-M-SM').dispatchEvent(new FocusEvent('focusout', { bubbles: true }))");
+      assert.equal(await p.evaluate("document.querySelector('#c-M-SM').value"), '2');
+    }
+    const control = "document.querySelector('#c-M-SM')";
+    await p.evaluate(`{
+      Object.defineProperty(${control}, 'validity', { configurable: true, value: { badInput: true } });
+      ${editQuantity('')}
+      delete ${control}.validity;
+      ${control}.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    }`);
+    assert.equal(await p.evaluate(`${control}.value`), '2');
+    await p.evaluate(editQuantity(4));
+    assert.equal(await p.evaluate("document.querySelector('#v-resumen .rt tfoot td:last-child').textContent"), '8');
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '8');
+    await p.wait(`${orderQuantity} === 4`);
+    await p.navigate();
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '8');
+  });
+
+  await check('I3/I4 · Pares, unidades y shorts conservan piezas o rechazan toda la conversión', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await p.evaluate(editCell('c-M-SH', 2));
+    await p.view('resumen');
+    await p.evaluate(`{
+      const input = document.querySelector('#pzShort');
+      input.value = '2.5';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      if (input.value !== '2') throw new Error('Se aceptó una configuración decimal');
+      input.value = '3';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }`);
+    await p.view('pedidos');
+    await p.click('#m-ind');
+    await p.evaluate(editCell('c-M-MC', 4) + editCell('c-M-ML', 2) + editCell('c-L-MQ', 3));
+    const leer = id => p.evaluate(`document.querySelector('#${id}').value`);
+    const total = () => p.evaluate("document.querySelector('#v-produccion .tot b').textContent");
+    assert.equal(await total(), '19');
+    await p.click('#m-par');
+    assert.match(await p.evaluate(toastText), /Talla L.*manga sin pareja/);
+    assert.equal(await leer('c-M-MC'), '4');
+    assert.equal(await leer('c-L-MQ'), '3');
+    await p.evaluate(editCell('c-L-MQ', 4));
+    await p.click('#m-par');
+    assert.deepEqual(await Promise.all(['c-M-MC', 'c-M-ML', 'c-L-MQ'].map(leer)), ['2', '1', '2']);
+    assert.equal(await total(), '20');
+    await p.click('#m-ind');
+    await p.click('#s-pz');
+    assert.deepEqual(await Promise.all(['c-M-MC', 'c-M-ML', 'c-L-MQ', 'c-M-SH'].map(leer)), ['4', '2', '4', '6']);
+    assert.equal(await total(), '20');
+    await p.evaluate(editCell('c-L-SH', 5));
+    await p.click('#s-comp');
+    assert.match(await p.evaluate(toastText), /Talla L.*múltiplo de 3/);
+    assert.equal(await leer('c-M-SH'), '6');
+    await p.evaluate(editCell('c-L-SH', 3));
+    await p.click('#s-comp');
+    assert.deepEqual(await Promise.all(['c-M-SH', 'c-L-SH'].map(leer)), ['2', '1']);
+    assert.equal(await total(), '23');
+  });
+
+  await check('I3/I4 · Chemis se reconoce sin reclasificar sus mangas como estándar', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await p.evaluate(editCell('c-M-F', 2) + editCell('c-M-E', 2) + editCell('c-M-MQ', 2));
+    const alertas = () => p.evaluate("document.querySelector('#ed-alertas').textContent");
+    assert.match(await alertas(), /4 mangas chemis.*2 prenda/);
+    assert.doesNotMatch(await alertas(), /sin mangas|Convertir en franelillas|Convertir en completas/);
+    await p.evaluate(editCell('c-M-MC', 1));
+    await p.click('[data-fix="M"]');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-C').value"), '1');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MQ').value"), '2');
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '14');
+    await p.click('#m-ind');
+    await p.evaluate(editCell('c-M-MQ', 1));
+    assert.match(await alertas(), /manga corta chemis suelta.*falta la otra manga/);
+  });
+
+  await check('I3/I4 · Datos anteriores recuperables conservan piezas y los valores pendientes bloquean la producción', async () => {
+    const p = await page(await newContext());
+    await importarI2(p, respaldoI2(obj => {
+      obj.datos.ajustes.piezasShort = obj.lotes[0].ajustes.piezasShort = 25;
+      const cantidades = { FE: 1, MC: 1.5, SH: 7 / 25, F: -2, E: 0.5 };
+      obj.datos.clientes[0].q.M = { ...cantidades };
+      obj.lotes[0].clientes[0].q.M = { ...cantidades };
+    }));
+    assert.match(await p.evaluate(toastText), /^Respaldo importado/);
+    assert.equal(await p.evaluate("document.querySelector('.lote .stats span:last-child b').textContent"), '12');
+    await p.click('[data-lv]');
+    assert.match(await p.evaluate("document.querySelector('#modal').textContent"), /12 piezas/);
+    await p.click('#rs-no');
+    await p.view('pedidos');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-MC').value"), '3');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-SH').value"), '7');
+    assert.equal(await p.evaluate("document.querySelector('#c-M-F').value"), '-2');
+    await p.view('produccion');
+    await p.click('#dlHoja');
+    assert.match(await p.evaluate(toastText), /Corrige las cantidades/);
+    await p.view('resumen');
+    await p.click('#exportar');
+    assert.match(await p.evaluate(toastText), /Corrige las cantidades/);
+    await p.view('pedidos');
+    await p.evaluate(editCell('c-M-F', 0) + editCell('c-M-E', 0));
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .tot b').textContent"), '12');
+    await p.wait("!document.querySelector('#v-produccion [role=alert]')");
+  });
+
+  await check('I3/I4 · Las copias, las portadas y el historial permanecen aislados al editar o deshacer', async () => {
+    const p = await page(await newContext());
+    await seedOrder(p);
+    await p.upload('#fileImg', imageFile);
+    await p.wait(imageReady('#imgbox img'));
+    await saveLot(p, 'HISTÓRICO A', false);
+    await p.wait(`${lotQuantity} === 2 && document.querySelector('#save.ok')`);
+    await saveLot(p, 'EN CURSO B', false);
+    await p.wait(`${stored('montajes-lotes')}.length === 2 && document.querySelector('#save.ok')`);
+    const lotes = () => p.evaluate(stored('montajes-lotes'));
+    const [historico, activo] = await lotes();
+    const card = id => `.lote:has([data-lv="${id}"])`;
+    await p.view('produccion');
+    await p.click('[data-cport]');
+    await p.wait(`${stored('montajes-lotes')}[1].portadaCli`);
+    await p.click('#btnUndo');
+    await p.wait(`${stored('montajes-lotes')}[1].portadaCli === null`);
+    await p.click('#btnRedo');
+    await p.wait(`${stored('montajes-lotes')}[1].portadaCli`);
+    assert.deepEqual((await lotes())[0], historico);
+    await p.view('historial');
+    await p.click(`${card(historico.id)} [data-pdel]`);
+    await p.wait(`${stored('montajes-lotes')}[0].clientes[0].imgProd?.none`);
+    assert.equal((await lotes())[1].clientes[0].img.lid, activo.clientes[0].img.lid);
+    assert.equal(await p.evaluate(`${stored('montajes-sub')}.clientes[0].img.lid`), activo.clientes[0].img.lid);
+    const guardados = await lotes();
+    await p.click(`${card(historico.id)} [data-la="cargar"]`);
+    await p.click('[data-lc]');
+    await p.wait("!document.querySelector('#v-pedidos').hidden");
+    await p.evaluate(editQuantity(9));
+    await p.click('#noimg');
+    await p.evaluate(`{
+      const campo = document.querySelector('#f-nombre');
+      campo.value = 'pedido editable';
+      campo.dispatchEvent(new Event('change', { bubbles: true }));
+    }`);
+    assert.equal(await p.evaluate("document.querySelector('#v-produccion .pcard h2').textContent"), 'PEDIDO EDITABLE');
+    assert.match(await p.evaluate("document.querySelector('#v-resumen').textContent"), /PEDIDO EDITABLE/);
+    await p.wait(`${orderQuantity} === 9 && ${stored('montajes-sub')}.loteActivo === null`);
+    assert.deepEqual(await lotes(), guardados);
+  });
+
+  await check('I3/I4 · Una pestaña rezagada conserva su borrador y no sobrescribe pedidos, lotes ni respaldos', async () => {
+    const context = await newContext();
+    const primera = await page(context);
+    await seedOrder(primera);
+    const segunda = await page(context, '/app', "Boolean(document.querySelector('#save.bad'))");
+    await segunda.evaluate(editQuantity(8));
+    await segunda.evaluate(beforeUnload);
+    assert.equal(await primera.evaluate(orderQuantity), 2);
+    await primera.evaluate(editQuantity(5));
+    await saveLot(primera, 'LOTE DE LA PRIMERA PESTAÑA', false);
+    await primera.wait(`${orderQuantity} === 5 && ${lotQuantity} === 5 && document.querySelector('#save.ok')`);
+    const esperado = await estadoRespaldo(primera);
+    await segunda.wait("document.querySelector('#save').textContent.includes('Exporta tus cambios')");
+    await saveLot(segunda, 'SEGUNDA PESTAÑA', false);
+    assert.match(await segunda.evaluate("document.querySelector('#l-error').textContent"), /Otra pestaña cambió/);
+    await importarI2(segunda, respaldoI2());
+    assert.match(await segunda.evaluate(toastText), /Otra pestaña cambió/);
+    assert.equal(await segunda.evaluate("document.querySelector('#c-M-SM').value"), '8');
+    await primera.command('Page.close');
+    await segunda.click('#reintentarGuardar');
+    assert.deepEqual(await estadoRespaldo(segunda), esperado);
+    await segunda.command('Page.close');
+    const recargada = await page(context);
+    assert.equal(await recargada.evaluate("document.querySelector('#c-M-SM').value"), '5');
+    const siguiente = await page(context, '/app', "Boolean(document.querySelector('#save.bad'))");
+    await siguiente.evaluate(editQuantity(10));
+    await recargada.command('Page.close');
+    await siguiente.wait(`${orderQuantity} === 10 && ${lotQuantity} === 10 && document.querySelector('#save.ok')`);
+  });
+
+  await check('I3/I4 · Imágenes, respaldo y PDF con indicaciones completas', async () => {
+    const carpeta = await mkdtemp(join(dir, 'archivo-'));
+    let ruta = new URL('../Montajes-Sublimacion.html', import.meta.url).href;
+    let p;
+    try {
+      p = await page(await newContext(carpeta), ruta);
+      console.log('INFO · Chromium permitió abrir el HTML con file://.');
+    } catch (error) {
+      if (!/ERR_BLOCKED_BY_ADMINISTRATOR/.test(error.message)) throw error;
+      console.log('OMITIDA · Apertura file:// por política de Chromium (ERR_BLOCKED_BY_ADMINISTRATOR). Se valida por HTTP local.');
+      ruta = '/app';
+      p = await page(await newContext(carpeta), ruta);
+    }
+    await seedOrder(p);
+    await p.upload('#fileImg', imageFile);
+    await p.wait(imageReady('#imgbox img'));
+    await p.wait(`Boolean(${stored('montajes-sub')}.clientes[0].img?.lid)`);
+    await p.navigate();
+    assert.equal(await p.evaluate('location.protocol'), ruta.startsWith('file:') ? 'file:' : 'http:');
+    await p.wait(imageReady('#imgbox img'));
+    await p.evaluate(`{
+      const notas = document.querySelector('#r-notas');
+      notas.value = 'Indicación de corte y costura. '.repeat(24) + 'FIN DE INDICACIONES';
+      notas.dispatchEvent(new Event('input', { bubbles: true }));
+    }`);
+    await saveLot(p, 'LOTE DESDE ARCHIVO', false);
+    await p.wait(`${lotQuantity} === 2 && document.querySelector('#save.ok')`);
+    await p.view('historial');
+    await p.click('#resExp');
+    const respaldo = JSON.parse(await readFile(await download('respaldo-montajes-', carpeta), 'utf8'));
+    const destino = await page(await newContext(), ruta);
+    await importarI2(destino, respaldo);
+    assert.match(await destino.evaluate(toastText), /^Respaldo importado/);
+    await destino.view('historial');
+    await destino.wait(imageReady('#v-historial .lthumb img'));
+    await p.view('produccion');
+    await p.click('#dlHoja');
+    sheet = await readFile(await download('hoja-produccion-', carpeta), 'utf8');
+    const output = await page(await newContext(), '/hoja');
+    await output.wait(imageReady('section img'));
+    const { data } = await output.command('Page.printToPDF', { preferCSSPageSize: true, printBackground: true });
+    const pdf = join(carpeta, 'archivo.pdf');
+    await writeFile(pdf, Buffer.from(data, 'base64'));
+    const text = execFileSync('pdftotext', ['-layout', pdf, '-'], { encoding: 'utf8' });
+    assert.match(text, /Franelilla\s+2\b/i);
+    assert.match(text, /FIN\s+DE\s+INDICACIONES/);
   });
 } finally {
   process.exitCode = failures ? 1 : process.exitCode;
