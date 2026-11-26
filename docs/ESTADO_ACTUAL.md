@@ -59,15 +59,15 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 
 - Instrucciones de apertura, respaldo y acceso directo para Windows en [LEEME.txt](../distribucion/LEEME.txt).
 - El PNG aprobado se conserva byte por byte. El ICO contiene tamaños de 16 a 256 píxeles y el HTML incorpora un favicon PNG de 64 × 64. Al retirar la etiqueta del favicon, el HTML coincide byte por byte con `de39965`. La procedencia del icono se registró en el PR n.º 5.
-- El [ZIP de distribución](../distribucion/Montajes-Sublimacion-v1.29.0.zip) contiene el HTML, ambos formatos de icono y las instrucciones. Se verificaron su integridad y la decodificación del favicon en Chromium por HTTP local. La validación conserva las 35 comprobaciones de la base.
+- El ZIP de distribución (rama `codex/distribucion-v1.29.0`) contiene el HTML, ambos formatos de icono y las instrucciones. Se verificaron su integridad y la decodificación del favicon en Chromium por HTTP local. La validación conserva las 35 comprobaciones de la base.
 
 ## Versión 1.30.0
 
 - Pedidos tiene 16 columnas y 17 tallas hasta 5XL. Resumen conserva la presentación de Prendas por talla y muestra pares más unidades sueltas. Los cuerpos y mangas de chemis se cuentan por separado de los estándar. El PNG aprobado se incrustó como icono interno y el favicon de distribución se conserva.
 - Los pedidos antiguos se migran al abrir y se guardan con el flujo habitual. Los lotes históricos se interpretan al leerlos y conservan sus registros originales hasta que se actualizan mediante el flujo de guardado. Los respaldos siguen en formato 1. Cada pedido o lote usa su configuración histórica para recuperar unidades y piezas. Un short antiguo con un factor distinto de dos pasa a piezas sueltas con su total físico original. Las cantidades inválidas siguen bloqueando la producción hasta corregirlas.
 - Pasaron las 38 comprobaciones con datos ficticios en Chromium 156 mediante `node tests/i0.mjs --no-sandbox`. Se verificaron las 16 categorías por separado y las 34 piezas al combinarlas en 5XL, incluida la restauración del respaldo, el CSV, la hoja y el PDF generado. Se revisó el desplazamiento de las tablas en escritorio y móvil. Chromium bloqueó `file://` por su política y el flujo se probó por HTTP de loopback. La llamada al diálogo de impresión y el adaptador de Claude se simularon. Quedaron pendientes la impresora física y el servicio real de Claude.
-- El ZIP de 1.30.0 incluye el HTML de la rama, el PNG e ICO de distribución y las instrucciones. Se comprobó la integridad del ZIP y la coincidencia de sus entradas con los archivos fuente.
+- El [ZIP de 1.30.0](../distribucion/Montajes-Sublimacion-v1.30.0.zip) incluye el HTML de la rama, el PNG e ICO de distribución y las instrucciones. Se comprobó la integridad del ZIP y la coincidencia de sus entradas con los archivos fuente.
 
 ## Próxima acción
 
-Revisar el PR de 1.30.0 en la rama `codex/v1.30.0-prendas`. La fusión requiere autorización del propietario.
+Revisar el [PR #6 de 1.30.0](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/6), con implementación en `9c79a50`. La fusión requiere autorización del propietario.
