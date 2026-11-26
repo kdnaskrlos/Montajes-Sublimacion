@@ -1,5 +1,5 @@
 # Estado actual
-Fecha: 2026-11-25. Versión verificada en I2: 1.28.5. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Rama base: main.
+Fecha: 2026-11-25. Versión verificada: 1.29.0. Repositorio privado: kdnaskrlos/Montajes-Sublimacion. Base de estabilización: `main` en `2994984` (v1.28.5). Rama de entrega: `codex/estabilizacion-v1.29.0`.
 
 ## Base técnica
 Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
@@ -31,19 +31,29 @@ Comando y alcance de las pruebas en [tests/README.md](../tests/README.md).
 - Las 28 comprobaciones de Chromium con datos ficticios (15 de I0/I1 y 13 de I2) pasaron con `node tests/i0.mjs --no-sandbox` en HTTP local. Los fallos de almacenamiento fueron simulados. La política del entorno bloqueó `file://`.
 - La importación segura se realiza en la aplicación local con IndexedDB y Web Locks. El adaptador de Claude se simuló para verificar la indicación de usar el flujo local y sus guardados de I1. El servicio real quedó fuera de las pruebas.
 
-## Hallazgos y prioridades
-P0: cantidades negativas/decimales llegan a totales, exportaciones y lotes; conversiones pares/unidades y shorts/piezas pueden producir fracciones. Proteger consistencia y confirmar reglas para sobrantes y chemis.
-P1: historial e imágenes vinculados por ID de cliente; cambios de una imagen pueden afectar múltiples lotes incluso desde historial; deshacer no incluye LOTES ni portadaCli; imágenes huérfanas sin limpieza; dos pestañas pueden sobrescribir datos en el guardado ordinario; hoja de impresión puede recortar indicaciones por altura fija; renombrar cliente no refresca todas las vistas al momento; fecha de entrega no validada contra fecha de pedido.
-P2: estados definidos pero sin interfaz, campo diseño residual, funciones/estilos sin uso, accesibilidad y rendimiento de rerender; revisar mejoras de flujo solo tras estabilidad.
+## Estabilización I3/I4
+
+- La entrada y el copiado admiten cantidades enteras seguras. Las conversiones se aplican a todas las tallas juntas y se rechazan si sobra una manga o una pieza de short. Las antiguas fracciones de conversión recuperables se muestran en piezas o unidades exactas. Las demás cantidades antiguas permanecen visibles para su corrección y bloquean imprimir, emitir CSV/hoja o guardar un lote con datos incompletos. El respaldo formato 1 conserva esas cantidades pendientes.
+- Las mangas chemis se mantienen en su categoría. Pedidos, Resumen, Producción y el detalle histórico muestran cantidades calculadas con las reglas y ajustes correspondientes. La hoja descargada deja crecer las indicaciones y pagina según el contenido.
+- Cargar un lote desde Historial abre una copia editable. Las imágenes de Pedidos y las portadas históricas tienen destinos independientes. El guardado automático continúa para el lote en curso. Deshacer y rehacer incluyen la portada del pedido y evitan reactivar un lote anterior.
+- La app local usa Web Locks para dar el guardado a una pestaña por origen y compara el estado de pedidos e historial antes de escribir. Una pestaña rezagada conserva el borrador en memoria y permite exportarlo desde Historial. En navegadores sin Web Locks, la comprobación de estado detecta sobrescrituras que ya llegaron al almacenamiento, sin exclusión mutua.
+
+## Validación de I3/I4
+
+- Pasaron 35 comprobaciones con datos ficticios en Chromium 156 y HTTP de loopback mediante `node tests/i0.mjs --no-sandbox`. Se reutilizaron las 28 pruebas de I0 a I2 y se añadieron 7 comprobaciones para las correcciones. El PDF generado incluye las indicaciones completas del caso de prueba.
+- La política de Chromium bloqueó `file://` con `ERR_BLOCKED_BY_ADMINISTRATOR`. Quedaron pendientes la apertura directa, el diálogo nativo de impresión, la impresora física y el servicio real de Claude. Los fallos de almacenamiento y el adaptador se probaron mediante simulación.
+
+## Pendientes fuera de la estabilización
+
+- Limpieza de imágenes huérfanas, validación del orden de fechas, revisión visual y accesibilidad. Los estados sin interfaz y el campo de diseño residual quedan para una iteración de flujo.
 
 ## Hoja de ruta
 I0: entorno Codex configurado y batería de referencia ejecutada con datos ficticios. HTML base v1.28.3 intacto.
 I1: guardado seguro de pedidos y lotes integrado en main, commit `db3fc4d`.
-I2: implementación local verificada en `codex/i2-respaldos-seguros` desde `db3fc4d`. Pendiente revisión del Pull Request.
-I3: integridad de cantidades, conversiones y alertas, pruebas de reglas de producción (alto).
-I4: aislamiento general del historial, deshacer y consistencia entre vistas (alto, dividir si es necesario).
-I5: impresión sin recortes, experiencia móvil/escritorio, accesibilidad (medio).
+I2: respaldos y restauración segura integrados en `main` en `2994984`.
+I3/I4: estabilización de cantidades, producción, historial y guardado local entre pestañas en una sola entrega.
+I5: revisión visual de impresión, experiencia móvil/escritorio y accesibilidad (medio).
 I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar IndexedDB para datos si límites/volumen lo justifican; no nube por defecto.
 
 ## Próxima acción
-Revisar el Pull Request de I2. Tras su integración autorizada, abordar la integridad de cantidades y conversiones en I3.
+Revisar el pull request de estabilización antes de integrar la versión en `main`.
