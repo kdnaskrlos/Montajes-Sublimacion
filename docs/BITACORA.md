@@ -1,5 +1,10 @@
 # Bitácora
 
+## 2026-11-25 — Preparación local de la limpieza para publicación
+
+- Se respaldaron las referencias anunciadas y se verificó su restauración en una copia aislada. Se preparó la reescritura de correos, el saneamiento de archivos y la protección local para futuros commits.
+- Pasaron las 44 comprobaciones existentes. La compilación v1.31.0 se conservó byte por byte. Las referencias y superficies pendientes de GitHub están en [ESTADO_ACTUAL.md](ESTADO_ACTUAL.md).
+
 ## 2026-11-25 — Análisis inicial (I0, preparación)
 - Fuente: HTML original de Claude, v1.28.3, SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`.
 - Revisados código, interfaz declarada, cálculos, almacenamiento, historial, imágenes, exportaciones, respaldo, eventos y adaptadores Claude.

@@ -1,5 +1,14 @@
 # Estado actual
-Fecha: 2026-11-25. Versión en `main` 1.30.0, commit `61c9387` ([PR #6](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/6)). Versión 1.31.0 en `codex/pwa-v1.31.0`.
+Fecha 2026-11-25. Versión 1.30.0 en `main`. Versión 1.31.0 en revisión en `codex/pwa-v1.31.0`.
+
+## Preparación local de la publicación
+
+- Se conserva un único repositorio. Esta limpieza se preparó en una copia Git aislada. En GitHub, Pages sigue deshabilitado y el PR #7 sigue abierto. La PWA conserva la versión 1.31.0.
+- El respaldo privado comprobado contiene las 16 referencias Git anunciadas. La copia local reescribe 25 commits, preserva sus relaciones y los instantes de las fechas, normaliza las zonas a UTC y sustituye los correos y nombres personales de Git por la identidad pública de GitHub. Se limpiaron seis mensajes con coautoría. GitHub vinculaba una de las direcciones a la cuenta del propietario. Para la otra se usó la coincidencia de la firma de autoría con commits noreply verificados y las coautorías del historial. Los correos originales siguen en el respaldo privado.
+- Se retiraron metadatos de autor y edición del PNG histórico y se reconstruyeron tres variantes de ZIP de distribución. Los píxeles y el perfil de color del PNG se conservaron. El ICO se comprobó en todos sus tamaños y sus bytes se conservaron. En la copia histórica se retiraron enlaces directos al adjunto y al ZIP original.
+- La compilación de Pages y los archivos del programa coincidieron byte por byte con la versión previa. Pasaron las 44 comprobaciones con Chromium mediante `node tests/i0.mjs --no-sandbox`. La política de este entorno bloqueó `file://` y se probó su flujo por HTTP local. Los hooks de Git aceptaron noreply y bloquearon identidades, mensajes, antecesores y etiquetas con correos ficticios no permitidos.
+- GitHub conserva las ocho ramas y ocho referencias de PR anteriores a la reescritura local. No se anunciaban etiquetas ni se encontraron releases. El adjunto del PR #5 coincide byte por byte con el PNG original y conserva sus metadatos. Se revisaron los dos runs históricos de Actions. No tenían artefactos descargables y sus logs conservan SHA antiguas. Persisten también las posibles vistas en caché y copias fuera del repositorio.
+- Antes de publicar, resolver el adjunto y coordinar con GitHub la retirada de referencias de PR, vistas en caché y objetos viejos. La reescritura de ramas exige autorización por separado. Revisar las SHA originales con el repositorio todavía privado y coordinar la sustitución de clones existentes. GitHub Support aplica sus propios criterios para retirar datos.
 
 ## Base técnica de 1.29.0
 Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
@@ -86,4 +95,4 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 
 ## Próxima acción
 
-Revisar el PR de `codex/pwa-v1.31.0` y decidir cómo publicar una copia sin los datos personales detectados. [PR #7](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/7).
+Revisar la copia saneada y coordinar la limpieza en GitHub antes de autorizar la reescritura remota o el cambio de visibilidad. [PR #7](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/7).
