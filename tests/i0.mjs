@@ -1,17 +1,37 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { extname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
 const dir = await mkdtemp(join(tmpdir(), 'montajes-i0-'));
 const app = await readFile(new URL('../Montajes-Sublimacion.html', import.meta.url));
+const pagesPath = '/Montajes-Sublimacion/';
+const buildScript = fileURLToPath(new URL('../scripts/build-pages.mjs', import.meta.url));
+const currentBuild = join(dir, 'pages');
+execFileSync(process.execPath, [buildScript, currentBuild]);
+let pagesBuild = currentBuild, pagesOnline = true, previousIndex = false;
+const pagesTypes = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
+  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain',
+};
 let sheet;
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
+  if (path.startsWith(pagesPath)) {
+    if (!pagesOnline) { res.writeHead(503).end(); return; }
+    const relative = path.slice(pagesPath.length) || 'index.html';
+    const contentType = pagesTypes[extname(relative)];
+    const build = previousIndex && relative === 'index.html' ? currentBuild : pagesBuild;
+    const asset = contentType && await readFile(join(build, relative)).catch(() => null);
+    if (!asset) { res.writeHead(404).end(); return; }
+    res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' }).end(asset);
+    return;
+  }
   const html = path === '/app' ? app :
     path === '/app-remota' ? app.toString('utf8').replace('<script>', `<script>\n${remoteAdapter}\n`) :
     path === '/hoja' ? sheet : null;
@@ -1342,6 +1362,194 @@ try {
     const text = execFileSync('pdftotext', ['-layout', pdf, '-'], { encoding: 'utf8' });
     assert.match(text, /Franelilla\s+2\b/i);
     assert.match(text, /FIN\s+DE\s+INDICACIONES/);
+  });
+
+  const pwaDownloads = await mkdtemp(join(dir, 'pwa-descargas-'));
+  const pwaContext = await newContext(pwaDownloads);
+  const key = name => `Montajes-Sublimacion:montajes-${name}`;
+  const pwaQuantity = `${stored(key('sub'))}?.clientes[0]?.q.M?.SM`;
+  const pwaLotQuantity = `${stored(key('lotes'))}?.[0]?.clientes[0]?.q.M?.SM`;
+  const serviceWorkerReady = `navigator.serviceWorker.controller?.scriptURL === location.origin + '${pagesPath}sw.js'`;
+  const waiting = '(async () => !!(await navigator.serviceWorker.ready).waiting)()';
+  const updateVisible = '!document.querySelector("#pwaActualizar").hidden';
+  const version = 'document.querySelector(".ver")?.textContent';
+  const appVersion = app.toString().match(/title="Versión del programa">(v\d+\.\d+\.\d+)</)[1];
+  const nextVersion = appVersion.replace(/\d+$/, patch => String(Number(patch) + 1));
+  const aviso = 'document.querySelector("#pwaAviso").textContent';
+  const otherCache = `montajes-sublimacion:${base}/Otro-Proyecto/:anterior`;
+  let pwa;
+
+  await check('PWA · Manifest, iconos y opción de instalar en la subruta', async () => {
+    pwa = await page(pwaContext, pagesPath);
+    await pwa.wait(serviceWorkerReady);
+    const installation = await page(undefined, pagesPath);
+    await installation.wait(serviceWorkerReady);
+    const manifestUrl = base + pagesPath + 'manifest.webmanifest';
+    const { url, errors } = await installation.command('Page.getAppManifest');
+    assert.equal(url, manifestUrl);
+    assert.deepEqual(errors, []);
+    const { installabilityErrors } = await installation.command('Page.getInstallabilityErrors');
+    assert.deepEqual(installabilityErrors, []);
+    const manifest = await pwa.evaluate(`fetch(${JSON.stringify(manifestUrl)}).then(r => r.json())`);
+    assert.equal(manifest.id, pagesPath);
+    assert.equal(new URL(manifest.scope, manifestUrl).pathname, pagesPath);
+    assert.equal(new URL(manifest.start_url, manifestUrl).pathname, pagesPath);
+    assert.equal(manifest.display, 'standalone');
+    for (const { src, sizes } of manifest.icons) {
+      assert.equal(await pwa.evaluate(`(async () => {
+        const img = new Image(); img.src = ${JSON.stringify(src)}; await img.decode();
+        return img.naturalWidth + 'x' + img.naturalHeight;
+      })()`), sizes);
+    }
+    assert.ok(manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
+    await installation.evaluate(`{
+      const event = new Event('beforeinstallprompt', { cancelable: true });
+      event.prompt = async () => { window.promptInvocado = true; };
+      window.dispatchEvent(event);
+    }`);
+    await installation.wait('!document.querySelector("#pwaInstalar").hidden');
+    await installation.click('#pwaInstalar');
+    assert.equal(await installation.evaluate('window.promptInvocado && document.querySelector("#pwaInstalar").hidden'), true);
+    await installation.evaluate('window.dispatchEvent(new Event("appinstalled"))');
+    assert.equal(await installation.evaluate('document.querySelector("#pwaInstalar").hidden'), true);
+  });
+
+  await check('PWA · Recarga, fuente e HTML descargable sin red', async () => {
+    await pwa.command('Page.bringToFront');
+    pagesOnline = false;
+    try {
+      await pwa.navigate();
+      await pwa.wait(serviceWorkerReady);
+      assert.equal(await pwa.evaluate(version), appVersion);
+      assert.equal(await pwa.evaluate(`document.fonts.load('600 14px "Plus Jakarta Sans"', 'Producción').then(fonts => fonts.length)`), 1);
+      assert.equal(await pwa.evaluate("fetch('./index.html?offline=1').then(r => r.ok)"), true);
+      for (const view of ['resumen', 'produccion', 'historial', 'pedidos']) await pwa.view(view);
+      const result = await pwa.command('Page.navigate', { url: base + pagesPath + 'index.html?offline=2' });
+      assert.equal(result.errorText, undefined);
+      await pwa.wait(`location.search === '?offline=2' && ${serviceWorkerReady}`);
+      await pwa.click('a[download="Montajes-Sublimacion.html"]');
+      const offlineFile = await download('Montajes-Sublimacion.html', pwaDownloads);
+      assert.deepEqual(await readFile(offlineFile), app);
+      await pwa.navigate();
+    } finally { pagesOnline = true; }
+  });
+
+  await check('PWA · Respaldo formato 1, restauración offline e independencia de almacenamiento', async () => {
+    const legacy = await page(pwaContext);
+    await importarI2(legacy, respaldoI2());
+    const legacyData = await estadoRespaldo(legacy);
+    await pwa.evaluate(`caches.open(${JSON.stringify(otherCache)}).then(cache => cache.put('/otra-app', new Response('otra app')))`);
+    assert.equal(await pwa.evaluate(pwaQuantity), undefined);
+    pagesOnline = false;
+    try {
+      await importarI2(pwa, respaldoI2());
+      assert.match(await pwa.evaluate(toastText), /^Respaldo importado/);
+      await importarI2(pwa, respaldoI2(obj => { obj.datos.clientes[0].q.M.SM = 7; }));
+      assert.equal(await pwa.evaluate(pwaQuantity), 7);
+      await pwa.click('#resRec');
+      await pwa.click('#impOk');
+      await pwa.wait(`document.querySelector('#modal').hidden && ${pwaQuantity} === 4`);
+      await pwa.navigate();
+      await pwa.wait(imageReady('#imgbox img'));
+      assert.equal(await pwa.evaluate(pwaLotQuantity), 4);
+      assert.equal(await pwa.evaluate(`localStorage.getItem(${JSON.stringify(key('tema'))})`), 'dark');
+      const databases = await pwa.evaluate('indexedDB.databases().then(dbs => dbs.map(db => db.name))');
+      assert.ok(databases.includes(key('img')) && databases.includes('montajes-img'));
+      await pwa.view('historial');
+      await pwa.wait(imageReady('#v-historial .lthumb img'));
+      await pwa.click('#resExp');
+      const copyPath = await download('respaldo-montajes-', pwaDownloads);
+      const copy = JSON.parse(await readFile(copyPath, 'utf8'));
+      assert.equal(copy.formato, 1);
+      assert.equal(copy.imagenes[copy.datos.clientes[0].img.ref], expectedImage);
+      assert.equal(copy.imagenes[copy.lotes[0].portada.ref], secondImage);
+      const restoredLegacy = await page(await newContext());
+      await importarI2(restoredLegacy, copy);
+      assert.equal(await restoredLegacy.evaluate(orderQuantity), 4);
+      assert.deepEqual(await estadoRespaldo(legacy), legacyData);
+    } finally { pagesOnline = true; }
+  });
+
+  await check('PWA · Una publicación con versiones mezcladas conserva la versión activa', async () => {
+    const nextSource = join(dir, 'siguiente');
+    const nextBuild = join(dir, 'pages-siguiente');
+    await mkdir(join(nextSource, 'scripts'), { recursive: true });
+    await cp(buildScript, join(nextSource, 'scripts/build-pages.mjs'));
+    await cp(new URL('../pwa', import.meta.url), join(nextSource, 'pwa'), { recursive: true });
+    await writeFile(join(nextSource, 'Montajes-Sublimacion.html'), app.toString().replace(appVersion, nextVersion));
+    execFileSync(process.execPath, [join(nextSource, 'scripts/build-pages.mjs'), nextBuild]);
+    previousIndex = true;
+    pagesBuild = nextBuild;
+    try {
+      await pwa.evaluate(`(async () => {
+        const registration = await navigator.serviceWorker.ready;
+        registration.addEventListener('updatefound', () => {
+          const candidate = registration.installing;
+          candidate.addEventListener('statechange', () => { window.candidate = candidate.state; });
+        }, { once: true });
+        await registration.update();
+      })()`);
+      await pwa.wait("window.candidate === 'redundant'");
+      assert.equal(await pwa.evaluate(waiting), false);
+      assert.equal(await pwa.evaluate(updateVisible), false);
+      assert.equal(await pwa.evaluate(version), appVersion);
+    } finally { previousIndex = false; }
+  });
+
+  await check('PWA · Actualización disponible, aviso ante formularios y guardados rechazados', async () => {
+    await pwa.evaluate('navigator.serviceWorker.ready.then(r => r.update())');
+    await pwa.wait(waiting);
+    await pwa.wait(updateVisible);
+    await pwa.view('pedidos');
+    await pwa.evaluate("document.querySelector('#newName').value = 'BORRADOR FICTICIO'");
+    await pwa.click('#pwaActualizar');
+    assert.match(await pwa.evaluate(aviso), /Completa o cierra el formulario/);
+    assert.equal(await pwa.evaluate(waiting), true);
+    await pwa.evaluate("document.querySelector('#newName').value = ''");
+    await pwa.click('#btnLote');
+    await pwa.click('#pwaActualizar');
+    assert.match(await pwa.evaluate(aviso), /Completa o cierra el formulario/);
+    await pwa.click('#l-cancel');
+    await blockWrite(pwa, key('sub'));
+    await pwa.evaluate(editQuantity(8));
+    await pwa.wait('window.rejectedWrites > 0');
+    await pwa.click('#pwaActualizar');
+    await pwa.wait(`${aviso}.includes('Hay cambios sin guardar')`);
+    assert.equal(await pwa.evaluate(waiting), true);
+    assert.equal(await pwa.evaluate(version), appVersion);
+    assert.equal(await pwa.evaluate(pwaQuantity), 4);
+    assert.equal(await pwa.evaluate("document.querySelector('#c-M-SM').value"), '8');
+  });
+
+  await check('PWA · Actualiza con guardado confirmado y conserva el borrador de otra pestaña', async () => {
+    const second = await page(pwaContext, pagesPath, "document.querySelector('main').inert === false && !!document.querySelector('#save.bad')");
+    await second.wait(serviceWorkerReady);
+    await second.evaluate(editQuantity(9));
+    await second.wait("!document.querySelector('#reintentarGuardar').hidden");
+    await unblockWrite(pwa);
+    await pwa.click('#pwaActualizar');
+    await pwa.wait(`${version} === '${nextVersion}' && !!document.querySelector('#save.ok')`);
+    assert.equal(await pwa.evaluate(pwaQuantity), 8);
+    assert.equal(await pwa.evaluate(pwaLotQuantity), 8);
+    await second.wait(updateVisible);
+    assert.equal(await second.evaluate(version), appVersion);
+    assert.equal(await second.evaluate("document.querySelector('#c-M-SM').value"), '9');
+    await second.click('#pwaActualizar');
+    await second.wait(`${aviso}.includes('Hay cambios sin guardar')`);
+    assert.equal(await second.evaluate("document.querySelector('#c-M-SM').value"), '9');
+    assert.equal(await pwa.evaluate(`caches.open(${JSON.stringify(otherCache)}).then(c => c.match('/otra-app')).then(r => r?.text())`), 'otra app');
+    const cacheNames = await pwa.evaluate('caches.keys()');
+    assert.equal(cacheNames.filter(name => name.startsWith(`montajes-sublimacion:${base}${pagesPath}:`)).length, 1);
+    pagesOnline = false;
+    try {
+      await pwa.command('Page.bringToFront');
+      await pwa.navigate();
+      assert.equal(await pwa.evaluate(version), nextVersion);
+      assert.equal(await pwa.evaluate(pwaQuantity), 8);
+      await pwa.wait(imageReady('#imgbox img'));
+      await pwa.view('historial');
+      await pwa.wait(imageReady('#v-historial .lthumb img'));
+    } finally { pagesOnline = true; }
   });
 } finally {
   process.exitCode = failures ? 1 : process.exitCode;

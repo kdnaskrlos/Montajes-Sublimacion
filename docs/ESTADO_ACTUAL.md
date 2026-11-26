@@ -1,7 +1,9 @@
 # Estado actual
-Fecha 2026-11-25. Versión 1.30.0 en `main`. Versión 1.31.0 en revisión en `codex/pwa-v1.31.0`.
+Fecha 2026-11-25. Versión 1.31.0 integrada en el `main` saneado local. En GitHub, `main` conserva 1.30.0 y el PR #7 sigue abierto.
 
 ## Preparación local de la publicación
+
+- El propietario informó que activó la privacidad del correo y el bloqueo de pushes que lo exponen. Se confirmó otra vez el respaldo restaurando su bundle y verificando sus referencias y objetos. La integración local conserva los archivos de la PWA. La sustitución remota y la publicación siguen pendientes de autorización.
 
 - Se conserva un único repositorio. Esta limpieza se preparó en una copia Git aislada. En GitHub, Pages sigue deshabilitado y el PR #7 sigue abierto. La PWA conserva la versión 1.31.0.
 - El respaldo privado comprobado contiene las 16 referencias Git anunciadas. La copia local reescribe 25 commits, preserva sus relaciones y los instantes de las fechas, normaliza las zonas a UTC y sustituye los correos y nombres personales de Git por la identidad pública de GitHub. Se limpiaron seis mensajes con coautoría. GitHub vinculaba una de las direcciones a la cuenta del propietario. Para la otra se usó la coincidencia de la firma de autoría con commits noreply verificados y las coautorías del historial. Los correos originales siguen en el respaldo privado.
@@ -76,6 +78,22 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 - Los pedidos antiguos se migran al abrir y se guardan con el flujo habitual. Los lotes históricos se interpretan al leerlos y conservan sus registros originales hasta que se actualizan mediante el flujo de guardado. Los respaldos siguen en formato 1. Cada pedido o lote usa su configuración histórica para recuperar unidades y piezas. Un short antiguo con un factor distinto de dos pasa a piezas sueltas con su total físico original. Las cantidades inválidas siguen bloqueando la producción hasta corregirlas.
 - Pasaron las 38 comprobaciones con datos ficticios en Chromium 156 mediante `node tests/i0.mjs --no-sandbox`. Se verificaron las 16 categorías por separado y las 34 piezas al combinarlas en 5XL, incluida la restauración del respaldo, el CSV, la hoja y el PDF generado. Se revisó el desplazamiento de las tablas en escritorio y móvil. Chromium bloqueó `file://` por su política y el flujo se probó por HTTP de loopback. La llamada al diálogo de impresión y el adaptador de Claude se simularon. Quedaron pendientes la impresora física y el servicio real de Claude.
 - El [ZIP de 1.30.0](../distribucion/Montajes-Sublimacion-v1.30.0.zip) incluye el HTML de la rama, el PNG e ICO de distribución y las instrucciones. Se comprobó la integridad del ZIP y la coincidencia de sus entradas con los archivos fuente.
+
+## Versión 1.31.0 para GitHub Pages
+
+- `Montajes-Sublimacion.html` sigue siendo el archivo autónomo y el origen de la compilación. `scripts/build-pages.mjs` genera `dist/` con la PWA y una copia descargable del HTML. El manifest usa `/Montajes-Sublimacion/`, el plotter aprobado en PNG de 192 y 512 px, una variante enmascarable y un icono de 180 px para Apple. Pages sirve Plus Jakarta Sans desde su propia ruta.
+- El service worker precarga únicamente los archivos de la aplicación y comprueba que el HTML corresponde a su compilación. Cada versión de caché se identifica por la compilación y el ámbito del service worker. Al aceptar una actualización, se verifica el guardado antes de recargar. Las demás pestañas conservan su sesión y muestran el aviso.
+- Pages usa el prefijo `Montajes-Sublimacion:` en localStorage, IndexedDB y Web Locks. El HTML descargado conserva sus identificadores originales. La migración entre orígenes se hace con **Exportar respaldo** e **Importar respaldo**, en formato 1. La aplicación y el flujo de publicación carecen de un servidor de datos. El prefijo evita colisiones accidentales en el mismo origen, donde el navegador comparte permisos entre aplicaciones.
+- GitHub Actions valida los PR y `main`, y prepara el despliegue desde `main`. Pages estaba deshabilitado durante la auditoría. El flujo público y la instalación en dispositivos físicos quedan pendientes.
+- Pasaron las 38 comprobaciones existentes y seis nuevas en Chromium 156 con `node tests/i0.mjs --no-sandbox`. Se verificaron el manifest, el arranque sin red, la descarga, la migración por respaldo y el guardado entre versiones. Chromium bloqueó `file://` por política del entorno y se probó el archivo descargable por HTTP local. El aviso de instalación se simuló. `actionlint` validó el workflow y dos compilaciones produjeron archivos idénticos.
+- GitHub Actions confirmó las 44 comprobaciones en Chrome y permitió abrir el HTML mediante `file://`. En esa modalidad pasaron las pruebas de imágenes, respaldo, restauración y PDF. [Ejecución del PR](https://github.com/kdnaskrlos/Montajes-Sublimacion/actions/runs/45743061883).
+
+## Auditoría de publicación de 1.31.0
+
+- Se revisaron 22 commits y 51 blobs de las siete ramas remotas, las seis referencias de PR, los archivos comprimidos, las imágenes incrustadas y las conversaciones y revisiones de los seis PR existentes. En GitHub no había issues independientes, versiones publicadas ni ejecuciones de Actions. Wiki y Discussions estaban deshabilitados.
+- Gitleaks 8.24.3 no detectó credenciales en el historial analizado. El inventario y la inspección visual encontraron sólo variantes del icono del plotter, además de las referencias ficticias usadas por las pruebas. Los ZIP contienen HTML, iconos e instrucciones de distribución. No se encontraron respaldos JSON ni imágenes de clientes en los archivos analizados.
+- Los 22 commits incluyen en sus metadatos al menos uno de dos correos personales. El PNG original y sus copias en los ZIP contienen metadatos XMP con autor y fecha. Los PNG nuevos de la PWA se generaron sin esos metadatos. El comentario del PR #5 identifica un adjunto como icono de Montajes. El adjunto de GitHub no se pudo descargar de forma independiente durante esta revisión.
+- Desaconsejamos hacer público este repositorio en su estado actual. Una publicación requiere tratar también los metadatos históricos, los ZIP antiguos y el adjunto, o usar una copia pública limpia con sólo los archivos de distribución revisados. El repositorio sigue privado.
 
 ## Próxima acción
 

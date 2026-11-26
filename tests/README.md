@@ -1,4 +1,4 @@
-# Regresión de I0 a 1.30.0
+# Regresión de I0 a 1.31.0
 
 Desde la raíz del repositorio, con Node.js 18 o superior, Chromium y `pdftotext` (Poppler) disponibles:
 
@@ -21,3 +21,5 @@ I3/I4 añade siete comprobaciones de cantidades, conversiones, chemis, datos her
 `OK` indica que la comprobación pasó. Cualquier `FALLO` produce un código de salida distinto de cero.
 
 La versión 1.30.0 adapta las comprobaciones de unidades a las columnas independientes y añade tres casos. Comprueba cada una de las 16 categorías, la combinación de 34 piezas en 5XL en todas las vistas, CSV, hoja y PDF, y la migración de pedidos locales y lotes con modos y cantidades por short distintos. También verifica el icono incrustado y restaura la combinación de 5XL en un perfil limpio.
+
+La versión 1.31.0 conserva esas 38 comprobaciones y añade seis para la PWA. Sirve la compilación de Pages en `/Montajes-Sublimacion/` y comprueba los criterios de instalación y los iconos en un perfil normal de Chromium. Simula la llamada al aviso de instalación y la pérdida de conexión con el servidor. Verifica la descarga del HTML, la fuente local, el respaldo formato 1 en ambas direcciones y el aislamiento de datos y caché. Compila una segunda versión para probar un despliegue con archivos mezclados, los errores de cuota, los formularios pendientes y la conservación de un borrador en otra pestaña durante la actualización. La instalación desde el diálogo del sistema requiere un navegador con interfaz gráfica.

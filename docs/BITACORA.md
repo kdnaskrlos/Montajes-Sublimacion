@@ -1,5 +1,10 @@
 # Bitácora
 
+## 2026-11-25 — Integración local para la publicación
+
+- Se integró la PWA 1.31.0 en el historial saneado local. Se verificó de nuevo el respaldo con SHA-256 y una restauración. Se preparó la sustitución atómica de las ocho ramas con comparación de las referencias originales.
+
+
 ## 2026-11-25 — Preparación local de la limpieza para publicación
 
 - Se respaldaron las referencias anunciadas y se verificó su restauración en una copia aislada. Se preparó la reescritura de correos, el saneamiento de archivos y la protección local para futuros commits.
@@ -62,3 +67,11 @@
 - Pasaron 38 comprobaciones en Chromium, con 34 piezas confirmadas para una unidad de cada categoría en 5XL. Se verificaron la migración, las exportaciones y el contenido del ZIP.
 
 - El PR #6 incorpora el icono SVG de piezas sueltas de short. Se comprobó en Pedidos, Resumen y el detalle por talla a 390 y 1440 px. Se regeneró el ZIP de 1.30.0.
+
+## 2026-11-25 — Montajes Sublimación 1.31.0 para GitHub Pages
+
+- Base `61c9387` verificada en `main`. Se prepara `codex/pwa-v1.31.0` con instalación, funcionamiento sin red, descarga del HTML y actualización explícita con guardado verificado.
+- El formato 1 permite trasladar pedidos, lotes, imágenes y tema entre el HTML descargado y Pages. El producto mantiene las reglas, las vistas y los cálculos de 1.30.0.
+- Pasaron 44 comprobaciones en Chromium, incluidas seis para instalación, uso sin red, actualización y persistencia. Se verificó el workflow con `actionlint`.
+- La revisión de GitHub detectó correos personales en los commits y metadatos de autor en el icono original y los ZIP históricos. Se conserva la visibilidad privada. El alcance y las limitaciones de la auditoría están en [ESTADO_ACTUAL.md](ESTADO_ACTUAL.md).
+- El PR #7 quedó abierto para revisión. GitHub Actions confirmó las 44 pruebas y la apertura del HTML con `file://`.
