@@ -258,7 +258,7 @@ td input{width:100%;min-width:64px;border:0;background:transparent;text-align:ce
 td input::-webkit-outer-spin-button,td input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 td input:focus{background:color-mix(in srgb,var(--c,var(--accent)) 10%,var(--surface));outline:2px solid var(--c,var(--accent));outline-offset:-2px}
 td.has input{font-weight:800;color:var(--c)}
-td.bad{background:color-mix(in srgb,var(--err) 14%,var(--surface))} td.bad input{color:var(--err)}
+td.bad{background:color-mix(in srgb,var(--err) 14%,var(--surface))} td.bad input,td input[aria-invalid]{color:var(--err)}
 td.w{background:color-mix(in srgb,var(--warn) 14%,var(--surface))}
 #grid thead th+th,#grid tbody td,#grid tfoot td{border-left:1px solid var(--line)}
 /* columnas de ancho fijo: no cambian al pasar de un cliente a otro */
@@ -504,7 +504,7 @@ tbody tr:hover td{background:var(--surface-2)}
     <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
     <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="currentColor"/></svg>
   </button>
-  <span class="ver" title="Versión del programa">v1.28.5</span>
+  <span class="ver" title="Versión del programa">v1.29.0</span>
 </nav>
 
 <div class="shell">
@@ -578,6 +578,7 @@ const EXTRAS_DEF=[
   {k:"elastico",n:"Elástico",p:"short"},{k:"cordon",n:"Cordón",p:"short"},{k:"forro",n:"Forro / malla",p:"short"}
 ];
 function normAj(a){a=Object.assign({piezasShort:2},a||{});
+  if(!cantidadValida(a.piezasShort)||a.piezasShort===0)a.piezasShort=2;
   a.listas=a.listas||{};for(const k in LISTAS_DEF)if(!Array.isArray(a.listas[k]))a.listas[k]=LISTAS_DEF[k].slice();
   if(!Array.isArray(a.detalles))a.detalles=EXTRAS_DEF.map(x=>Object.assign({},x));return a}
 const DETS=()=>S.ajustes.detalles||EXTRAS_DEF;
@@ -627,24 +628,68 @@ let sel=null, soloUsadas=false, loaded=false, confirmDel=false, prodSel=null, lo
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10);
-const val=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+function cantidadValida(v){return Number.isSafeInteger(v)&&v>=0}
+function leerCantidad(valor){return /^\d+$/.test(valor)?Number(valor):NaN}
 const hoyISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 function fecha(iso){if(!iso)return "";const [y,m,d]=iso.split("-");return `${d}/${m}/${y}`}
 function toast(t,accion){const el=$("toast");el.innerHTML="";const sp=document.createElement("span");sp.textContent=t;el.appendChild(sp);
   if(accion){const b=document.createElement("button");b.className="tbtn";b.textContent=accion.txt;b.onclick=()=>{el.hidden=true;accion.fn()};el.appendChild(b)}
   el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,accion?7000:2600)}
-function q(cl,t,k){return val(cl.q&&cl.q[t]&&cl.q[t][k])}
-function setQ(cl,t,k,v){cl.q=cl.q||{};cl.q[t]=cl.q[t]||{};if(v===""||v===0)delete cl.q[t][k];else cl.q[t][k]=v;if(!Object.keys(cl.q[t]).length)delete cl.q[t]}
+const TIPOS_MANGA=["MC","ML","MQ"];
+const MENSAJE_CANTIDADES="Corrige las cantidades marcadas en Pedidos antes de generar producción.";
+function q(cl,t,k){
+  const v=cl.q?.[t]?.[k];
+  return cantidadValida(v)?v:0;
+}
+function setQ(cl,t,k,v){
+  if(!cantidadValida(v))return;
+  if(v)(cl.q[t]??={})[k]=v;
+  else if(cl.q[t]){
+    delete cl.q[t][k];
+    if(!Object.keys(cl.q[t]).length)delete cl.q[t];
+  }
+}
+function cantidadesPresentes(cl,tipos){
+  return TALLAS.flatMap(t=>tipos.filter(k=>Object.hasOwn(cl.q?.[t]||{},k)).map(k=>[t,k,cl.q[t][k]]));
+}
+function cambiarUnidad(cl,campo,nuevo,tipos,convertir,motivo){
+  if(cl[campo]===nuevo)return false;
+  const cantidades=cantidadesPresentes(cl,tipos);
+  const invalidas=cantidades.find(([, ,v])=>!cantidadValida(v));
+  if(invalidas){toast(MENSAJE_CANTIDADES);return false}
+  const fraccion=cantidades.find(([, ,v])=>!cantidadValida(convertir(v)));
+  if(fraccion){toast(`Talla ${fraccion[0]}: ${motivo}`);return false}
+  for(const [t,k,v] of cantidades)setQ(cl,t,k,convertir(v));
+  cl[campo]=nuevo;
+  return true;
+}
 function normCli(c){c.id=c.id||uid();c.q=c.q||{};c.modoManga=c.modoManga||"par";c.modoShort=c.modoShort||"comp";c.estado=c.estado||ESTADOS[0];c.req=c.req||{};c.req.extras=c.req.extras||[];return c}
+function recuperarUnidad(cl,campo,origen,destino,tipos,factor){
+  if(cl[campo]!==origen)return;
+  const cantidades=cantidadesPresentes(cl,tipos);
+  // Las versiones anteriores guardaban fracciones al convertir piezas sueltas.
+  const piezas=v=>Math.round(v*factor);
+  if(cantidades.some(([, ,v])=>!cantidadValida(v))&&cantidades.every(([, ,v])=>
+    typeof v==="number"&&cantidadValida(piezas(v))&&piezas(v)/factor===v)){
+    for(const [t,k,v] of cantidades)setQ(cl,t,k,piezas(v));
+    cl[campo]=destino;
+  }
+}
+function normalizarCantidades(cl,aj){
+  normCli(cl);
+  recuperarUnidad(cl,"modoManga","par","ind",TIPOS_MANGA,2);
+  recuperarUnidad(cl,"modoShort","comp","pz",["SH"],aj.piezasShort);
+  return cl;
+}
 function norm(d){
   const o={clientes:Array.isArray(d&&d.clientes)?d.clientes:[],ajustes:normAj(d&&d.ajustes),rev:(d&&d.rev)||"",loteActivo:(d&&d.loteActivo)||null,portadaCli:(d&&d.portadaCli)||null};
-  o.clientes.forEach(normCli);return o;
+  o.clientes.forEach(c=>normalizarCantidades(c,o.ajustes));return o;
 }
 
 function piezas(cl,t,aj){
   aj=aj||S.ajustes;
   const C=q(cl,t,"C"),L=q(cl,t,"L"),F=q(cl,t,"F"),E=q(cl,t,"E"),MC=q(cl,t,"MC"),ML=q(cl,t,"ML"),MQ=q(cl,t,"MQ"),FE=q(cl,t,"FE"),rawSH=q(cl,t,"SH"),SM=q(cl,t,"SM");
-  const ps=val(aj.piezasShort||2),pzS=cl.modoShort==="pz",SH=pzS?0:rawSH,SHp=pzS?rawSH:0;
+  const ps=aj.piezasShort||2,pzS=cl.modoShort==="pz",SH=pzS?0:rawSH,SHp=pzS?rawSH:0;
   const k=cl.modoManga==="par"?2:1;
   return {fr:C+L+SM+FE+F, es:C+L+SM+FE+E, FE, mc:2*C+MC*k, ml:2*L+ML*k, mq:MQ*k, sh:SH*ps+SHp, C,L,SM,F,E,MC,ML,MQ,SH,SHp,mqU:MQ*k,mcU:MC*k,mlU:ML*k};
 }
@@ -652,6 +697,10 @@ const ZERO=()=>({C:0,L:0,SM:0,FE:0,F:0,E:0,mcU:0,mlU:0,mqU:0,SH:0,SHp:0,fr:0,es:
 function sumCliente(cl,aj){const r=ZERO();TALLAS.forEach(t=>{const p=piezas(cl,t,aj);for(const x in r)r[x]+=p[x]});r.total=r.fr+r.es+r.mc+r.ml+r.mq+r.sh;return r}
 function porTalla(){const out={};TALLAS.forEach(t=>{const r=ZERO();S.clientes.forEach(cl=>{const p=piezas(cl,t);for(const x in r)r[x]+=p[x]});r.total=r.fr+r.es+r.mc+r.ml+r.mq+r.sh;out[t]=r});return out}
 function totales(clientes,aj){const r=ZERO();r.total=0;clientes.forEach(cl=>{const s=sumCliente(cl,aj);for(const x in r)r[x]+=s[x]});return r}
+function cantidadesIncorrectas(clientes,aj){
+  return clientes.some(c=>cantidadesPresentes(c,TIPOS.map(t=>t.k)).some(([, ,v])=>!cantidadValida(v)))||
+    !cantidadValida(totales(clientes,aj).total);
+}
 
 /* ---------- validaciones ---------- */
 function alertasCliente(cl){
@@ -660,40 +709,95 @@ function alertasCliente(cl){
   const dup=S.clientes.filter(o=>o!==cl&&(o.nombre||"").trim().toLowerCase()===(cl.nombre||"").trim().toLowerCase()&&(cl.nombre||"").trim()&&(o.diseno||"")===(cl.diseno||""));
   if(dup.length) a.push({lv:"warn",tx:`Hay otro pedido de “${esc(cl.nombre)}” con el mismo diseño. Revisa si está duplicado.`});
   TALLAS.forEach(t=>{
-    TIPOS.forEach(tp=>{const v=cl.q[t]&&cl.q[t][tp.k];if(v!==undefined&&(v<0||!Number.isInteger(v)))a.push({lv:"err",t,k:tp.k,tx:`Talla ${t}: “${tp.n}” tiene ${v}. Solo se aceptan números enteros desde 0.`})});
+    TIPOS.forEach(tp=>{const v=cl.q[t]?.[tp.k];if(Object.hasOwn(cl.q[t]||{},tp.k)&&!cantidadValida(v))a.push({lv:"err",t,k:tp.k,tx:`Talla ${t}: “${tp.n}” tiene ${esc(v)}. Corrige la cantidad con un entero desde 0.`})});
     const p=piezas(cl,t);
     if(cl.modoManga==="ind"){
       if(p.MQ%2) a.push({lv:"warn",t,k:"MQ",ty:"imparMQ",tx:`Talla ${t}: ${p.MQ} manga${p.MQ>1?"s":""} corta${p.MQ>1?"s":""} chemis suelta${p.MQ>1?"s":""}. Queda una manga sin su par.`});
       if(p.MC%2) a.push({lv:"warn",t,k:"MC",ty:"imparMC",tx:`Talla ${t}: ${p.MC} manga${p.MC>1?"s":""} corta${p.MC>1?"s":""} suelta${p.MC>1?"s":""}. Queda una manga sin su par.`});
       if(p.ML%2) a.push({lv:"warn",t,k:"ML",ty:"imparML",tx:`Talla ${t}: ${p.ML} manga${p.ML>1?"s":""} larga${p.ML>1?"s":""} suelta${p.ML>1?"s":""}. Queda una manga sin su par.`});
     }
-    if(cl.modoShort==="pz"&&p.SHp>0){const ps=val(S.ajustes.piezasShort||2);const r=p.SHp%ps;
+    if(cl.modoShort==="pz"&&p.SHp>0){const ps=S.ajustes.piezasShort;const r=p.SHp%ps;
       if(r) a.push({lv:"warn",t,k:"SH",ty:"shortpz",tx:`Talla ${t}: ${p.SHp} pieza${p.SHp>1?"s":""} de short sueltas. ${p.SHp>=ps?`Arman ${Math.floor(p.SHp/ps)} short${Math.floor(p.SHp/ps)>1?"s":""} y sobran ${r} pieza${r>1?"s":""}`:`No completan un short (cada short lleva ${ps} piezas)`}. Confirma que el cliente pidió piezas sueltas.`});}
     if(p.F>0&&p.E>0){
       const pares=Math.floor(p.mcU/2)+Math.floor(p.mlU/2);const n=Math.min(p.F,p.E,pares);
-      if(pares>0) a.push({lv:"warn",t,k:"F",ty:"fem",fix:t,tx:`Talla ${t}: hay ${p.F} solo frente, ${p.E} solo espalda y mangas sueltas. Con eso se arman ${n} prenda${n>1?"s":""} completa${n>1?"s":""}. ¿Es la misma prenda?`});
-      else{const n2=Math.min(p.F,p.E);a.push({lv:"warn",t,k:"F",ty:"fe",fixsm:t,tx:`Talla ${t}: ${p.F} solo frente y ${p.E} solo espalda sin mangas. Si son la misma prenda, ${n2>1?"son":"es"} ${n2} franelilla${n2>1?"s":""}; si no, le faltan 2 mangas a cada una.`})}
+      if(pares>0) a.push({lv:"warn",t,k:"F",ty:"fem",fix:t,tx:`Talla ${t}: las mangas cortas estándar y largas alcanzan para ${n} prenda${n>1?"s":""} completa${n>1?"s":""}. ¿Corresponden a esos frentes y espaldas?`});
+      if(p.mqU){
+        const paresChemis=Math.floor(p.mqU/2);
+        const nChemis=Math.min(p.F,p.E,paresChemis);
+        a.push({lv:"warn",t,k:"MQ",ty:"femq",tx:`Talla ${t}: hay ${p.mqU} manga${p.mqU===1?"":"s"} chemis junto con frentes y espaldas. ${nChemis?`Alcanzan para ${nChemis} prenda${nChemis===1?"":"s"} chemis si corresponden a esas piezas. Conserva las mangas chemis en su columna.`:"Revisa si falta la otra manga para completar la prenda."}`});
+      }else if(!pares&&!p.mcU&&!p.mlU){
+        const n2=Math.min(p.F,p.E);a.push({lv:"warn",t,k:"F",ty:"fe",fixsm:t,tx:`Talla ${t}: ${p.F} solo frente y ${p.E} solo espalda sin mangas. Si son la misma prenda, ${n2>1?"son":"es"} ${n2} franelilla${n2>1?"s":""}; si no, le faltan 2 mangas a cada una.`});
+      }
     }else if(p.fr===0&&p.es===0&&(p.MC>0||p.ML>0||p.MQ>0)){
       a.push({lv:"warn",t,k:p.MC?"MC":p.ML?"ML":"MQ",ty:"solomangas",tx:`Talla ${t}: solo hay mangas, sin frente ni espalda. Confirma que el cliente pidió solo mangas.`});
     }
   });
-  if(sumCliente(cl).total===0) a.push({lv:"warn",tx:`${esc(nm)} no tiene prendas cargadas.`});
+  const total=sumCliente(cl).total;
+  if(!cantidadValida(total))a.push({lv:"err",tx:"El total de piezas excede el límite de cálculo. Reduce las cantidades."});
+  if(total===0) a.push({lv:"warn",tx:`${esc(nm)} no tiene prendas cargadas.`});
   /* avisos que el usuario ya confirmó: se ocultan mientras esa talla no cambie */
   const ok=cl.ok||{};let conf=0;
-  const res=a.filter(x=>{if(!x.ty)return true;x.id=x.ty+":"+x.t;if(ok[x.id]&&ok[x.id]===firma(cl,x.t)){conf++;return false}return true});
+  const res=a.filter(x=>{if(!x.ty)return true;x.id=x.ty+":"+x.t;if(ok[x.id]&&ok[x.id]===firma(cl,x.t,x.ty)){conf++;return false}return true});
   res.confirmados=conf;return res;
 }
-function firma(cl,t){return JSON.stringify(cl.q[t]||{})+"|"+cl.modoManga+"|"+cl.modoShort}
+function firma(cl,t,ty){return JSON.stringify(cl.q[t]||{})+"|"+cl.modoManga+"|"+cl.modoShort+(ty==="shortpz"?"|"+S.ajustes.piezasShort:"")}
 function nivel(a){return a.some(x=>x.lv==="err")?"err":a.length?"warn":"ok"}
 
 /* ---------- guardado ---------- */
 let db=null, ref=null, saveTimer=null, saving=false, escrituraPedido=null, lastRev="", dirty=false, versionPedido=0;
 let errorPedido="", errorLotes=false, lecturaPedidoFallida=false, lecturaLotesFallida=false;
+const BLOQUEO_EDICION="montajes:edicion";
+const MENSAJE_PESTANA="Otra pestaña tiene el guardado. Ciérrala para guardar desde aquí.";
+const MENSAJE_CONFLICTO="Otra pestaña cambió los datos. Exporta tus cambios desde Historial antes de recargar.";
+let escrituraLocal=false, conflictoLocal=false, valoresLocales=[], cederEscrituraLocal=null;
 const cambiosLotes=new Map();
+async function iniciarEscrituraLocal(){
+  if(!navigator.locks){escrituraLocal=true;return}
+  const retener=()=>new Promise(resolve=>{cederEscrituraLocal=resolve});
+  await new Promise(resolve=>{
+    navigator.locks.request(BLOQUEO_EDICION,{ifAvailable:true},lock=>{
+      escrituraLocal=!!lock;
+      resolve();
+      if(lock)return retener();
+      navigator.locks.request(BLOQUEO_EDICION,()=>{
+        comprobarPestana();
+        if(conflictoLocal)return;
+        escrituraLocal=true;
+        const bloqueo=retener();
+        guardarPendientes();
+        pintarGuardado();
+        return bloqueo;
+      }).catch(()=>pintarGuardado());
+    }).catch(()=>resolve());
+  });
+}
+function comprobarPestana(){
+  if(valoresLocales.length&&valoresLocales.some((valor,i)=>localStorage.getItem(CLAVES_RESP[i])!==valor)){
+    conflictoLocal=true;
+    if(cederEscrituraLocal){cederEscrituraLocal();cederEscrituraLocal=null;escrituraLocal=false}
+    pintarGuardado();
+  }
+}
+function exigirEscrituraLocal(){
+  comprobarPestana();
+  if(conflictoLocal)throw new ErrorRespaldo(MENSAJE_CONFLICTO);
+  if(!escrituraLocal)throw new ErrorRespaldo(MENSAJE_PESTANA);
+  if(localStorage.getItem(MARCA_RESP))throw new ErrorRespaldo("Hay una restauración pendiente. Vuelve a abrir la aplicación.");
+}
+function escribirLocal(i,valor){
+  exigirEscrituraLocal();
+  escribirValorResp(i,valor);
+  if(i<2)valoresLocales[i]=valor;
+}
+window.addEventListener("storage",e=>{
+  if(!db&&loaded&&(e.key===null||CLAVES_RESP.slice(0,2).includes(e.key)))comprobarPestana();
+});
 function setSave(cls,txt){const el=$("save");el.className="pill st "+cls;el.querySelector("span").textContent=txt}
 function pintarGuardado(){
   $("reintentarGuardar").hidden=!(dirty&&errorPedido||cambiosLotes.size&&errorLotes);
-  if(errorPedido)setSave("bad",errorPedido);
+  if(conflictoLocal)setSave("bad",MENSAJE_CONFLICTO);
+  else if(loaded&&!db&&!escrituraLocal)setSave("bad",MENSAJE_PESTANA);
+  else if(errorPedido)setSave("bad",errorPedido);
   else if(errorLotes)setSave("bad","No se pudo guardar el historial");
   else if(lecturaLotesFallida)setSave("bad","No se pudo leer el historial guardado");
   else if(dirty||cambiosLotes.size)setSave("busy","Guardando…");
@@ -717,7 +821,7 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 window.addEventListener("pagehide",guardarPendientes);
 /* historial de deshacer / rehacer */
 const UNDO=[],REDO=[];let base=null,grupo=false,grupoT=null;
-const foto=()=>JSON.stringify({clientes:S.clientes,ajustes:S.ajustes,loteActivo:S.loteActivo||null});
+const foto=()=>JSON.stringify({clientes:S.clientes,ajustes:S.ajustes,loteActivo:S.loteActivo||null,portadaCli:S.portadaCli||null});
 function cerrarGrupo(){if(grupo){grupo=false;clearTimeout(grupoT);base=foto()}}
 function registrarCambio(agrupar){
   if(base!==null){
@@ -726,14 +830,17 @@ function registrarCambio(agrupar){
   }
 }
 function changed(agrupar){
+  if(!S.clientes.some(c=>c.id===S.portadaCli))S.portadaCli=null;
   registrarCambio(agrupar);
   persistir();pintarHist();
 }
-function persistir(){
-  dirty=true;versionPedido++;programarLote();pintarGuardado();vigilarSalida();
+function persistir(actualizarLote=true){
+  dirty=true;versionPedido++;if(actualizarLote)programarLote();pintarGuardado();vigilarSalida();
   clearTimeout(saveTimer);saveTimer=setTimeout(guardar,700);
 }
-function aplicar(json){const d=JSON.parse(json);S.clientes=(d.clientes||[]).map(normCli);S.ajustes=normAj(d.ajustes);S.loteActivo=d.loteActivo||null;
+function aplicar(json){const d=JSON.parse(json);S.clientes=d.clientes;S.ajustes=normAj(d.ajustes);
+  if(S.loteActivo!==d.loteActivo||!LOTES.some(l=>l.id===d.loteActivo))S.loteActivo=null;
+  S.portadaCli=d.portadaCli||null;
   if(!S.clientes.find(c=>c.id===sel))sel=S.clientes[0]&&S.clientes[0].id;confirmDel=false;prodSel=null;
   const foco=document.activeElement&&document.activeElement.id;renderTodo();base=foto();persistir();pintarHist();if(admK&&!$("modal").hidden)pintarAdm();
   if(foco){const el=$(foco);if(el&&el.focus){el.focus();try{el.select&&el.select()}catch(_){}}}}
@@ -748,12 +855,12 @@ async function guardar(versionParaVaciar=null){
   const version=versionPedido, rev=uid();
   let vaciado=false;
   try{
-    const pedido=vaciar?{...S,clientes:[],loteActivo:null}:S;
+    const pedido=vaciar?{...S,clientes:[],loteActivo:null,portadaCli:null}:S;
     const copy=JSON.parse(JSON.stringify({...pedido,rev}));
     if(ref){escrituraPedido=ref.set(copy);await escrituraPedido}
     else{
-      if(lecturaPedidoFallida||localStorage.getItem(MARCA_RESP))throw new Error("Pedidos no disponibles para escritura");
-      localStorage.setItem("montajes-sub",JSON.stringify(copy));
+      if(lecturaPedidoFallida)throw new Error("Pedidos no disponibles para escritura");
+      escribirLocal(0,JSON.stringify(copy));
     }
     lastRev=S.rev=rev;
     errorPedido="";
@@ -784,7 +891,7 @@ async function iniciar(){
       const d=snap.exists?snap.data():null;
       if(d&&d.rev&&d.rev===lastRev){loaded=true;return}
       if(dirty||saving)return;
-      S=norm(d?JSON.parse(JSON.stringify(d)):null);loaded=true;
+      S=norm(d?JSON.parse(JSON.stringify(d)):null);loaded=true;prodSel=null;
       if(!sel||!S.clientes.find(c=>c.id===sel))sel=S.clientes[0]&&S.clientes[0].id;
       errorPedido="";pintarGuardado();renderTodo();base=foto();grupo=false;pintarHist();principal.inert=false;
     },()=>{errorPedido=dirty?"Pedidos sin guardar · Sin conexión":"No se pudieron leer los pedidos";pintarGuardado()});
@@ -794,7 +901,7 @@ async function iniciar(){
       lecturaLotesFallida=false;renderHistorial();pintarLote();pintarGuardado();
     },()=>{lecturaLotesFallida=true;pintarGuardado()});
   }else{
-    try{await iniciarRecuperacion()}catch(e){
+    try{await iniciarEscrituraLocal();await iniciarRecuperacion()}catch(e){
       const mensaje=e instanceof ErrorRespaldo?e.message:"Hay una restauración pendiente. Vuelve a abrir la aplicación para recuperar los datos.";
       document.querySelector(".shell").inert=true;
       setSave("bad",mensaje);toast(mensaje);
@@ -802,14 +909,19 @@ async function iniciar(){
     }
     try{reflejarTema(localStorage.getItem("montajes-tema"))}catch(e){}
     let d=null;
-    try{d=JSON.parse(localStorage.getItem("montajes-sub")||"null")}
-    catch(e){lecturaPedidoFallida=true;errorPedido="No se pudieron leer los pedidos guardados"}
     try{
-      const lotes=JSON.parse(localStorage.getItem("montajes-lotes")||"[]");
-      if(!Array.isArray(lotes))throw new Error("Historial inválido");
+      valoresLocales[0]=localStorage.getItem(CLAVES_RESP[0]);
+      d=JSON.parse(valoresLocales[0]||"null");
+      if(d!==null&&(!registroResp(d)||!listaResp(d.clientes,registroResp)))throw new Error("Pedidos inválidos");
+    }
+    catch(e){d=null;lecturaPedidoFallida=true;errorPedido="No se pudieron leer los pedidos guardados"}
+    try{
+      valoresLocales[1]=localStorage.getItem(CLAVES_RESP[1]);
+      const lotes=JSON.parse(valoresLocales[1]||"[]");
+      if(!listaResp(lotes,l=>registroResp(l)&&(l.clientes===undefined||listaResp(l.clientes,registroResp))))throw new Error("Historial inválido");
       LOTES=lotes;
     }catch(e){lecturaLotesFallida=true}
-    S=norm(d);
+    S=norm(d);prodSel=null;
     loaded=true;sel=S.clientes[0]&&S.clientes[0].id;pintarGuardado();renderTodo();base=foto();pintarHist();
     principal.inert=false;
   }
@@ -883,7 +995,7 @@ function renderEditor(){
     <div class="alerts" id="ed-alertas"></div>
     <div class="gridwrap"><table id="grid">
       <thead><tr><th class="stk">Talla</th>${TO.map(tp=>`<th data-col="${tp.k}"><div class="hd"><span class="drag" title="Arrastra para mover la columna">${chip(tp.ic,tp.c)}</span><span class="t">${tp.n}</span><span class="s">${tp.k==="MC"||tp.k==="ML"||tp.k==="MQ"?(par?"pares":"unidades"):tp.k==="SH"?(pzS?"piezas sueltas":S.ajustes.piezasShort+" piezas c/u"):tp.s}</span></div></th>`).join("")}</tr></thead>
-      <tbody>${ts.map(t=>`<tr data-t="${t}"><th>${t}</th>${TO.map(tp=>{const v=cl.q[t]&&cl.q[t][tp.k];return `<td style="--c:var(${tp.c})" data-k="${tp.k}"><input id="c-${t}-${tp.k}" inputmode="numeric" type="number" min="0" step="1" value="${v===undefined?"":v}" aria-label="${tp.n} talla ${t}"><span class="fill" title="Arrastra para copiar el valor"></span></td>`}).join("")}</tr>`).join("")}</tbody>
+      <tbody>${ts.map(t=>`<tr data-t="${t}"><th>${t}</th>${TO.map(tp=>{const v=cl.q[t]&&cl.q[t][tp.k];return `<td style="--c:var(${tp.c})" data-k="${tp.k}"><input id="c-${t}-${tp.k}" inputmode="numeric" type="number" min="0" step="1" value="${v===undefined?"":esc(v)}" aria-label="${tp.n} talla ${t}"><span class="fill" title="Arrastra para copiar el valor"></span></td>`}).join("")}</tr>`).join("")}</tbody>
       <tfoot><tr><th>Total</th>${TO.map(tp=>`<td class="num" id="ft-${tp.k}" style="color:var(${tp.c})"></td>`).join("")}</tr></tfoot>
     </table></div>
     <p class="note">Una prenda completa lleva frente, espalda y 2 mangas. Pulsa Enter para deseleccionar la casilla.</p>
@@ -975,6 +1087,7 @@ function renderResumen(){
   const clientes=S.clientes.map(cl=>({cl,s:sumCliente(cl)})).filter(x=>x.s.total);
   $("v-resumen").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
   <div class="toolbar"><div class="sec">${ico("resumen")}Resumen del pedido actual</div><button class="btn" id="exportar">${ico("dl")}Descargar CSV</button></div>
+  ${cantidadesIncorrectas(S.clientes)?`<p class="al err" role="alert">${MENSAJE_CANTIDADES}</p>`:""}
   <div id="csvBox" hidden></div>
   <div class="card edge" style="--c:var(--t-larga)"><div class="toolbar"><div class="sec" style="font-size:12px">Prendas por talla</div>${rows.length&&S.ajustes.ordenResumen&&ordenResumen().join()!==ORDEN_RES.join()?`<button class="lk" type="button" id="resReset">Restablecer orden de columnas</button>`:""}</div>
   ${tarjetasTalla(rows,pt,tot)}
@@ -1020,7 +1133,7 @@ function hojaDatos(cl){
 }
 function prodClientes(){
   const con=S.clientes.filter(c=>sumCliente(c).total>0);
-  if(prodSel===null) prodSel=new Set(con.map(c=>c.id));
+  if(prodSel===null) prodSel=new Set(S.clientes.map(c=>c.id));
   return {con,sel:con.filter(c=>prodSel.has(c.id))};
 }
 function renderProduccion(){
@@ -1029,6 +1142,7 @@ function renderProduccion(){
   $("v-produccion").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
   <div class="toolbar"><div class="sec">${ico("produccion")}Hoja de producción <small>para corte y costura, sin precios</small></div>
     <div style="display:flex;gap:6px"><button class="btn" id="prHoja" ${elegidos.length?"":"disabled"}>${ico("impresora")}Imprimir</button><button class="btn primary" id="dlHoja" ${elegidos.length?"":"disabled"}>${ico("dl")}Descargar hoja</button></div></div>
+  ${cantidadesIncorrectas(S.clientes)?`<p class="al err" role="alert">${MENSAJE_CANTIDADES}</p>`:""}
   <div class="card"><div class="toolbar"><span class="chk">Diseños incluidos en la hoja</span>${con.length?`<div style="display:flex;gap:14px">${con.some(c=>!prodSel.has(c.id))?`<button class="lk" type="button" id="psTodos">Seleccionar todos</button>`:""}${con.some(c=>prodSel.has(c.id))?`<button class="lk" type="button" id="psNinguno">Quitar todos</button>`:""}</div>`:""}</div>
     <div class="sel">${con.length?con.map(c=>`<button class="tg" data-ps="${c.id}" aria-pressed="${prodSel.has(c.id)}">${esc(c.diseno||c.nombre)}${c.diseno?` · ${esc(c.nombre)}`:""}</button>`).join(""):`<span class="note">No hay pedidos con prendas.</span>`}</div></div>
   <div class="pcards">${elegidos.map(cl=>{const {s,ts,filas,pz}=hojaDatos(cl);const r=R(cl);
@@ -1053,18 +1167,20 @@ function renderProduccion(){
   </div>`;
 }
 async function aDataURL(url){try{const r=await fetch(url);if(!r.ok)return null;const b=await r.blob();return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res(null);fr.readAsDataURL(b)})}catch(e){return null}}
-/* hoja de producción en formato compacto: 4 clientes por hoja carta */
+/* hoja de producción en formato compacto con paginación según el contenido */
 async function construirHoja(elegidos){
   const col={C:"#0891b2",L:"#7c3aed",FE:"#92400e",SM:"#2563eb",F:"#db2777",E:"#d97706",MC:"#0d9488",ML:"#4f46e5",MQ:"#c2410c",SH:"#4d7c0f"};
   let body="";
-  for(const cl of elegidos){
-    const {s,ts,filas,pz}=hojaDatos(cl);const r=cl.req||{extras:[]};
+  const pedidos=elegidos.map(cl=>({cl,...hojaDatos(cl),detalles:(cl.req?.extras||[]).map(k=>det(k).n)}));
+  for(const {cl,s,ts,filas,detalles} of pedidos){
+    const r=cl.req||{};
     const img=await srcDe(cl.img); /* la hoja usa siempre la foto de Pedidos */
+    if(tieneImg(cl.img)&&!img)throw new Error("No se pudo cargar el diseño de "+(cl.nombre||"un cliente")+".");
     body+=`<section><div class="im">${img?`<img src="${esc(img)}">`:"<span>Sin imagen</span>"}</div><div class="inf">
       <div class="cab"><div class="nm"><h2>${esc(cl.nombre||"Sin nombre")}</h2><span class="tp">Total de piezas: <b>${s.total}</b></span></div><span>Pedido: <b>${cl.pedido?fecha(cl.pedido):"—"}</b> · Entrega: <b>${cl.entrega?fecha(cl.entrega):"—"}</b></span></div>
       <table><tr><th class="pr">Prenda</th>${ts.map(t=>`<th>T-${t}</th>`).join("")}<th>Total</th></tr>${filas.map(f=>`<tr><td class="pr" style="color:${col[f.tp.k]}">${f.tp.k==="MQ"?"Mangas chemis (unid.)":f.tp.k==="MC"||f.tp.k==="ML"?f.tp.n+" (unid.)":f.tp.k==="SH"&&cl.modoShort==="pz"?"Piezas de short":f.tp.n}</td>${f.vals.map(v=>`<td>${v||""}</td>`).join("")}<td><b>${f.vals.reduce((a,b)=>a+b,0)}</b></td></tr>`).join("")}</table>
       <div class="bx"><div><b>Tela:</b> <span>${esc(r.tela||"—")}</span></div><div><b>Cuello:</b> <span>${esc(r.cuello||"—")}</span></div><div><b>Hilo:</b> <span>${esc(r.hilo||"—")}</span></div>
-        <div class="w"><b>Detalles:</b> <span>${r.extras&&r.extras.length?r.extras.map(k=>esc(det(k).n)).join(", "):"—"}</span></div>
+        <div class="w"><b>Detalles:</b> <span>${detalles.length?detalles.map(esc).join(", "):"—"}</span></div>
         <div class="w ind"><b>Indicaciones:</b> <span>${r.notas?esc(r.notas).replace(/\n/g," "):"—"}</span></div></div></div></section>`;
   }
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Hoja de producción ${fecha(hoyISO())}</title><style>
@@ -1074,11 +1190,10 @@ async function construirHoja(elegidos){
 body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:0 .6mm;font-size:10px}
 .encab{display:flex;justify-content:flex-start;gap:4mm;align-items:baseline;border-bottom:2px solid #111;padding-bottom:2mm;margin-bottom:2mm}
 .encab h1{font-size:14px;margin:0;text-transform:uppercase;letter-spacing:.05em}
-section{display:flex;gap:5mm;height:61mm;overflow:hidden;border:1px solid #bbb;border-left:1.2mm solid #7c3aed;border-radius:2mm;padding:3mm 4mm 3mm 3mm;margin:0 0 2.5mm;break-inside:avoid;page-break-inside:avoid}
-section:nth-of-type(4n){break-after:page;page-break-after:always}
+section{display:flex;gap:5mm;min-height:61mm;border:1px solid #bbb;border-left:1.2mm solid #7c3aed;border-radius:2mm;padding:3mm 4mm 3mm 3mm;margin:0 0 2.5mm;break-inside:avoid;page-break-inside:avoid}
 .im{width:55mm;height:55mm;flex:none;border:1px dashed #bbb;border-radius:1.5mm;display:flex;align-items:center;justify-content:center;color:#999;font-size:9px}
 .im img{max-width:100%;max-height:100%;object-fit:contain}
-.inf{flex:1;min-width:0;height:55mm;display:flex;flex-direction:column;gap:2mm;padding-top:.5mm}
+.inf{flex:1;min-width:0;display:flex;flex-direction:column;gap:2mm;padding-top:.5mm}
 .cab{display:flex;justify-content:space-between;align-items:baseline;gap:3mm}
 .cab .nm{display:flex;align-items:baseline;gap:3mm;min-width:0}
 .cab h2{font-size:15px;margin:0;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1099,26 +1214,32 @@ p{margin:0}
 .bx b{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#111}
 .bx span{color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bx .w{grid-column:1/-1}
-.bx .w span{white-space:normal}
-.bx .ind{background:#eef4ff;border-color:#bcd0f5;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden;align-content:start}
+.bx .w span{white-space:normal;overflow-wrap:anywhere}
+.bx .ind{background:#eef4ff;border-color:#bcd0f5;-webkit-print-color-adjust:exact;print-color-adjust:exact;align-content:start}
 .bx .ind b{color:#2563eb}
-.bx .ind span{font-size:10.5px;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.bx .ind span{font-size:10.5px;line-height:1.3}
 @media screen{body{max-width:216mm;margin:10mm auto;padding:0 8mm}}
 </style></head><body><div class="encab"><h1>Hoja de producción</h1><span>Fecha: ${fecha(hoyISO())} · ${elegidos.length} cliente${elegidos.length>1?"s":""}</span></div>${body}</body></html>`;
 }
 async function descargarHoja(btn){
+  if(cantidadesIncorrectas(S.clientes)){toast(MENSAJE_CANTIDADES);return}
   const {sel:elegidos}=prodClientes();if(!elegidos.length)return;
   btn.disabled=true;const prev=btn.innerHTML;btn.innerHTML="Preparando…";
-  const html=await construirHoja(elegidos);
-  btn.disabled=false;btn.innerHTML=prev;
-  const r=await guardarArchivo(`hoja-produccion-${hoyISO()}.html`,new Blob([html],{type:"text/html"}));
-  if(r==="ok")toast("Hoja descargada. Ábrela y usa Imprimir.");else if(r==="error")toast("No se pudo descargar la hoja.")
+  try{
+    const html=await construirHoja(structuredClone(elegidos));
+    const r=await guardarArchivo(`hoja-produccion-${hoyISO()}.html`,new Blob([html],{type:"text/html"}));
+    if(r==="ok")toast("Hoja descargada. Ábrela y usa Imprimir.");else if(r==="error")toast("No se pudo descargar la hoja.");
+  }catch(e){toast(e.message||"No se pudo preparar la hoja.")}
+  finally{btn.disabled=false;btn.innerHTML=prev}
 }
 async function imprimirHoja(btn){
+  if(cantidadesIncorrectas(S.clientes)){toast(MENSAJE_CANTIDADES);return}
   const {sel:elegidos}=prodClientes();if(!elegidos.length)return;
   if(window.claude){toast("Dentro de claude.ai no se puede imprimir. Usa la app descargada o pulsa “Descargar hoja”.");return}
   btn.disabled=true;const prev=btn.innerHTML;btn.innerHTML="Preparando…";
-  const html=await construirHoja(elegidos);
+  let html;
+  try{html=await construirHoja(structuredClone(elegidos))}
+  catch(e){btn.disabled=false;btn.innerHTML=prev;toast(e.message||"No se pudo preparar la hoja.");return}
   const fr=document.createElement("iframe");fr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0";document.body.appendChild(fr);
   fr.srcdoc=html;fr.onload=()=>{btn.disabled=false;btn.innerHTML=prev;
     const ims=[...fr.contentDocument.images];Promise.all(ims.map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r}))).then(()=>{
@@ -1131,10 +1252,19 @@ let loteTimer=null, guardandoCambiosLotes=false, versionCambiosLotes=0, creandoL
 const escriturasLote=new Map();
 function datosLote(){
   const con=S.clientes.filter(c=>sumCliente(c).total>0);
-  if(!con.length)return null;
-  const t=totales(con);
-  return {portadaCli:S.portadaCli||null,ajustes:JSON.parse(JSON.stringify(S.ajustes)),clientes:JSON.parse(JSON.stringify(con)),
-    resumen:{clientes:con.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total}};
+  if(!con.length||cantidadesIncorrectas(S.clientes))return null;
+  return {portadaCli:con.some(c=>c.id===S.portadaCli)?S.portadaCli:null,ajustes:structuredClone(S.ajustes),
+    clientes:structuredClone(con),resumen:resumirLote(con,S.ajustes)};
+}
+function resumirLote(clientes,ajustes){
+  const t=totales(clientes,ajustes);
+  return {clientes:clientes.length,completas:t.C+t.L,franelillas:t.SM,frentes:t.F,espaldas:t.E,
+    mangas:t.mcU+t.mlU+t.mqU,shorts:t.SH,piezas:t.total};
+}
+function leerLote(l){
+  const ajustes=normAj(structuredClone(l.ajustes));
+  const clientes=structuredClone(l.clientes||[]).map(c=>normalizarCantidades(c,ajustes));
+  return {ajustes,clientes};
 }
 function programarLote(){
   const id=S.loteActivo;
@@ -1148,7 +1278,14 @@ function programarLote(){
     return;
   }
   doc.editado=Date.now();
-  marcarCambioLote(id,"pedido",l=>Object.assign(l,JSON.parse(JSON.stringify(doc))));
+  marcarCambioLote(id,"pedido",l=>{
+    const copia=structuredClone(doc);
+    for(const c of copia.clientes){
+      const previo=l.clientes?.find(x=>x.id===c.id);
+      if(previo&&Object.hasOwn(previo,"imgProd"))c.imgProd=previo.imgProd;
+    }
+    Object.assign(l,copia);
+  });
 }
 function marcarCambioLote(id,clave,aplicar){
   if(!cambiosLotes.has(id))cambiosLotes.set(id,new Map());
@@ -1173,6 +1310,10 @@ function aplicarCambiosLote(l,cambios){
 async function guardarCambiosLotes(){
   if(!cambiosLotes.size)return true;
   if(recuperacionPendiente||respaldoEscribiendo||guardandoCambiosLotes||creandoLote)return false;
+  if(!db&&dirty&&[...cambiosLotes.values()].some(cambios=>cambios.has("pedido"))){
+    if(!saving)guardar();
+    if(dirty)return false;
+  }
   clearTimeout(loteTimer);guardandoCambiosLotes=true;
   const version=versionCambiosLotes;
   const pendientes=[...cambiosLotes].map(([id,cambios])=>[id,new Map(cambios)]);
@@ -1222,8 +1363,8 @@ function renderLoteForm(){
   <label class="chk"><input type="checkbox" id="l-vaciar"> Vaciar los pedidos después de guardar para empezar un lote nuevo</label>`;
 }
 function guardarLotesLocal(lotes){
-  if(lecturaLotesFallida||localStorage.getItem(MARCA_RESP))throw new Error("Historial no disponible para escritura");
-  localStorage.setItem("montajes-lotes",JSON.stringify(lotes));
+  if(lecturaLotesFallida)throw new Error("Historial no disponible para escritura");
+  escribirLocal(1,JSON.stringify(lotes));
   LOTES=lotes;
 }
 function reemplazarLote(lotes,id,lote){
@@ -1252,6 +1393,7 @@ async function escribirLote(id,actualizar){
 }
 async function crearLote(sobre){
   if(creandoLote)return;
+  if(cantidadesIncorrectas(S.clientes)){toast(MENSAJE_CANTIDADES);return}
   const nombre=$("l-nombre").value.trim()||`Lote ${fecha(hoyISO())}`;
   const coincidencias=LOTES.filter(l=>(l.nombre||"").trim().toLowerCase()===nombre.toLowerCase());
   const activo=coincidencias.find(l=>l.id===S.loteActivo);
@@ -1278,7 +1420,7 @@ async function crearLote(sobre){
     try{await escribirLote(nid,()=>doc)}
     catch(e){
       lotePorReintentar=true;
-      const mensaje=e&&(e.code==="quota_exceeded"||e.name==="QuotaExceededError")?
+      const mensaje=e instanceof ErrorRespaldo?e.message:e&&(e.code==="quota_exceeded"||e.name==="QuotaExceededError")?
         "No se pudo guardar el lote. Se alcanzó el límite de almacenamiento. Libera espacio e intenta de nuevo.":
         "No se pudo guardar el lote. Intenta de nuevo.";
       $("l-error").textContent=mensaje;$("l-error").hidden=false;toast(mensaje);
@@ -1294,7 +1436,7 @@ async function crearLote(sobre){
         detalle=version!==versionPedido?" Se conservaron los cambios hechos durante el guardado.":" No se pudieron vaciar los pedidos.";
       }
     }else if(version===versionPedido){
-      S.loteActivo=nid;cerrarGrupo();persistir();
+      cerrarGrupo();S.loteActivo=nid;base=foto();persistir(false);
     }
     $("loteForm").hidden=true;renderHistorial();pintarLote();pintarGuardado();
     toast(mensaje+detalle);
@@ -1308,12 +1450,14 @@ function renderHistorial(){
   const ls=[...LOTES].sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")||(b.creado||0)-(a.creado||0));
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
   <div class="toolbar"><div class="sec">${ico("historial")}Historial de lotes <small>${ls.length} guardado${ls.length===1?"":"s"}</small></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="resExp">${ico("dl")}Exportar respaldo</button><button class="btn" id="resImp">${ico("historial")}Importar respaldo</button>${hayRecuperacion?`<button class="btn" id="resRec">Restaurar estado anterior</button>`:""}<button class="btn primary" id="hLote">${ico("guardar")}Guardar lote actual</button></div></div>
-  ${ls.length?`<div class="lotes">${ls.map(l=>{const r=l.resumen||{};const pc=(l.clientes||[]).find(c=>c.id===l.portadaCli&&tieneImg(fotoProd(c)));const port=pc||(tieneImg(l.portada)&&!l.sinPortada?{img:l.portada,nombre:"lote"}:(l.clientes||[]).find(c=>tieneImg(fotoProd(c))));const im=port;
-    const thumb=`<div class="lthumb" data-lote="${l.id}">${im?imgTag(fotoProd(im),"",`loading="lazy"`):ico("img")}
+  ${ls.length?`<div class="lotes">${ls.map(l=>{const {clientes,ajustes}=leerLote(l);const r=resumirLote(clientes,ajustes);
+    const im=portadaLote(l).imagen;
+    const thumb=`<div class="lthumb" data-lote="${l.id}">${im?imgTag(im,"",`loading="lazy"`):ico("img")}
       <div class="lacts"><button class="lact" data-pcam="${l.id}" title="${im?"Cambiar imagen":"Agregar imagen"}" aria-label="${im?"Cambiar imagen":"Agregar imagen"}">${ico("img")}</button>${im?`<button class="lact del" data-pdel="${l.id}" title="Quitar imagen" aria-label="Quitar imagen">${ico("reset")}</button>`:""}</div></div>`;
     return `<article class="card edge lote" style="--c:var(--accent)"><div class="ltop"><div class="linfo">
     <div>${renLote===l.id?`<div class="lren"><input id="lrenIn" value="${esc(nombreLotePendiente)}" aria-label="Nuevo nombre del lote" autocomplete="off" ${renombrandoLote?"disabled":""}><button class="ib ok" id="lrenOk" title="Confirmar nombre" aria-label="Confirmar nombre" ${renombrandoLote?"disabled":""}>${ico("check")}</button></div>`:`<h3 data-ren="${l.id}" title="Doble clic para cambiar el nombre">${esc(l.nombre)}</h3>`}<span class="note">${ico("cal").replace("<svg",'<svg width="13" height="13" style="vertical-align:-2px"')} ${fecha(l.fecha)}</span>${S.loteActivo===l.id?`<span class="encurso">En curso · se guarda solo</span>`:""}</div>
-    <div class="stats"><span><b class="num">${r.clientes||0}</b>clientes</span><span><b class="num">${r.completas||0}</b>completas</span><span><b class="num">${r.frentes||0}</b>frentes</span><span><b class="num">${r.piezas||0}</b>piezas</span></div>
+    <div class="stats"><span><b class="num">${r.clientes}</b>clientes</span><span><b class="num">${r.completas}</b>completas</span><span><b class="num">${r.frentes}</b>frentes</span><span><b class="num">${r.piezas}</b>piezas</span></div>
+    ${cantidadesIncorrectas(clientes,ajustes)?'<p class="note">Hay cantidades antiguas que requieren revisión.</p>':""}
     </div>${thumb}</div>
     <div class="lbtns">
       <button class="btn sm" data-lv="${l.id}">Ver detalle</button>
@@ -1325,7 +1469,7 @@ function renderHistorial(){
 }
 
 function renderTodo(){pintarLote();renderTiles();renderLista();renderEditor();renderResumen();renderProduccion();renderHistorial()}
-function refrescarLigero(){renderTiles();renderLista();refrescarEditor()}
+function refrescarLigero(){renderTiles();renderLista();refrescarEditor();renderResumen();renderProduccion()}
 
 /* ---------- vistas ---------- */
 const VISTAS=["pedidos","resumen","produccion","historial"];
@@ -1358,8 +1502,23 @@ $("clist").addEventListener("click",e=>{if(sinClick){e.preventDefault();e.stopPr
   if(b.dataset.dely){const i=S.clientes.findIndex(c=>c.id===b.dataset.dely);if(i<0)return;const nm=S.clientes[i].nombre;S.clientes.splice(i,1);
     if(sel===b.dataset.dely)sel=(S.clientes[i]||S.clientes[i-1]||{}).id;confirmDel=false;renderTodo();changed();toast(`“${nm}” eliminado.`,{txt:"Deshacer",fn:deshacer})}
 });
-let celdaT=null;
 const REQ={"r-tela":"tela","r-cuello":"cuello","r-hilo":"hilo","r-notas":"notas"};
+function aplicarCantidades(cl,cambios){
+  if(cambios.some(([, ,v])=>!cantidadValida(v))){
+    toast("Escribe una cantidad entera desde 0.");
+    return false;
+  }
+  const anteriores=cl.q;
+  cl.q=structuredClone(anteriores);
+  for(const [t,k,v] of cambios)setQ(cl,t,k,v);
+  if(!cantidadValida(totales(S.clientes).total)){
+    const candidato=cl.q, total=sumCliente(cl).total;
+    cl.q=anteriores;
+    if(total>=sumCliente(cl).total){toast("El total de piezas excedería el límite de cálculo.");return false}
+    cl.q=candidato;
+  }
+  return true;
+}
 $("editor").addEventListener("input",e=>{
   const cl=S.clientes.find(c=>c.id===sel);if(!cl)return;const t=e.target;
   if(t.id==="f-nombre"){cl.nombre=t.value;refrescarLigero();changed(1);return}
@@ -1367,23 +1526,49 @@ $("editor").addEventListener("input",e=>{
   if(t.id==="f-entrega"){cl.entrega=t.value;changed();return}
   if(t.id==="f-pedido"){cl.pedido=t.value;changed();return}
   if(REQ[t.id]){cl.req[REQ[t.id]]=t.value;changed(1);pintarFicha();return}
-  const m=t.id.match(/^c-(.+)-(C|L|FE|SM|F|E|MC|ML|MQ|SH)$/);if(m){const raw=t.value.trim();setQ(cl,m[1],m[2],raw===""?"":Number(raw));refrescarLigero();changed(1)}
+  const m=t.id.match(/^c-(.+)-(C|L|FE|SM|F|E|MC|ML|MQ|SH)$/);
+  if(m){
+    const [,talla,tipo]=m, raw=t.value;
+    const v=t.validity.badInput?NaN:raw===""?0:leerCantidad(raw);
+    if(!aplicarCantidades(cl,[[talla,tipo,v]])){t.setAttribute("aria-invalid","true");return}
+    t.removeAttribute("aria-invalid");
+    refrescarLigero();changed(1);
+  }
 });
 $("editor").addEventListener("change",e=>{const cl=S.clientes.find(c=>c.id===sel);if(!cl)return;
   if(e.target.id==="f-usadas"){soloUsadas=e.target.checked;tallasFijas=null;renderEditor()}
-  if(e.target.id==="f-nombre"){cl.nombre=cl.nombre.trim().toUpperCase();e.target.value=cl.nombre;renderLista();changed()}
+  if(e.target.id==="f-nombre"){cl.nombre=e.target.value.trim().toUpperCase();e.target.value=cl.nombre;refrescarLigero();changed()}
   if(e.target.id==="f-diseno"||e.target.id==="f-entrega"||e.target.id==="f-pedido"||REQ[e.target.id]){renderResumen();renderProduccion()}
 });
 $("editor").addEventListener("keydown",e=>{
-  const m=e.target.id&&e.target.id.match(/^c-(.+)-(C|L|FE|SM|F|E|MC|ML|MQ|SH)$/);if(!m||e.key!=="Enter")return;e.preventDefault();clearTimeout(celdaT);e.target.blur()});
-$("editor").addEventListener("focusout",e=>{if(e.target.matches&&e.target.matches("#grid input")){renderResumen();renderProduccion()}});
+  if(!e.target.matches("#grid input")||e.key!=="Enter")return;e.preventDefault();e.target.blur()});
+$("editor").addEventListener("focusout",e=>{
+  const campo=e.target;
+  if(!campo.matches("#grid input[aria-invalid]"))return;
+  const td=campo.closest("td");
+  const cl=S.clientes.find(c=>c.id===sel);
+  campo.value=cl?.q[td.parentElement.dataset.t]?.[td.dataset.k]??"";
+  campo.removeAttribute("aria-invalid");
+});
 $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel);if(!cl)return;const b=e.target.closest("button");if(!b)return;const id=b.id;
-  if(id==="m-par"||id==="m-ind"){const nuevo=id==="m-par"?"par":"ind";if(cl.modoManga===nuevo)return;
-    TALLAS.forEach(t=>["MC","ML","MQ"].forEach(k=>{const v=q(cl,t,k);if(v)setQ(cl,t,k,nuevo==="ind"?v*2:v/2)}));
-    cl.modoManga=nuevo;renderEditor();refrescarLigero();renderResumen();renderProduccion();changed();return}
-  if(id==="s-comp"||id==="s-pz"){const nuevo=id==="s-pz"?"pz":"comp";if(cl.modoShort===nuevo)return;const ps=val(S.ajustes.piezasShort||2);
-    TALLAS.forEach(t=>{const v=q(cl,t,"SH");if(v)setQ(cl,t,"SH",nuevo==="pz"?v*ps:v/ps)});
-    cl.modoShort=nuevo;renderEditor();refrescarLigero();renderResumen();renderProduccion();changed();return}
+  if(id==="m-par"||id==="m-ind"){
+    cerrarGrupo();
+    const par=id==="m-par";
+    if(cambiarUnidad(cl,"modoManga",par?"par":"ind",TIPOS_MANGA,v=>par?v/2:v*2,
+      par?"hay una manga sin pareja en al menos una columna. Completa el par o conserva las unidades.":"la cantidad de mangas supera el límite de cálculo.")){
+      renderTodo();changed();
+    }
+    return;
+  }
+  if(id==="s-comp"||id==="s-pz"){
+    cerrarGrupo();
+    const completo=id==="s-comp", ps=S.ajustes.piezasShort;
+    if(cambiarUnidad(cl,"modoShort",completo?"comp":"pz",["SH"],v=>completo?v/ps:v*ps,
+      completo?"la cantidad de piezas debe ser múltiplo de "+ps+" para usar shorts completos.":"la cantidad de piezas de short supera el límite de cálculo.")){
+      renderTodo();changed();
+    }
+    return;
+  }
   if(id==="up"){$("fileImg").click();return}
   if(id==="noimg"){ponerImgCliente(cl.id,null);return}
   if(id==="ordReset"){S.ajustes.orden=null;renderEditor();renderResumen();renderProduccion();changed();toast("Orden de columnas restablecido.",{txt:"Deshacer",fn:deshacer});return}
@@ -1391,18 +1576,23 @@ $("editor").addEventListener("click",e=>{const cl=S.clientes.find(c=>c.id===sel)
   if(id==="fichaUsar"){const d=S.ajustes.fichaDef;Object.assign(cl.req,JSON.parse(JSON.stringify(d)));renderEditor();renderProduccion();changed();return}
   if(b.dataset.adm){abrirAdm(b.dataset.adm,b);return}
   if(b.dataset.ex){const k=b.dataset.ex;const ex=cl.req.extras;const i=ex.indexOf(k);if(i>=0)ex.splice(i,1);else ex.push(k);b.setAttribute("aria-pressed",i<0);renderProduccion();changed();pintarFicha();return}
-  if(b.dataset.okal){const id=b.dataset.okal;const t=id.slice(id.indexOf(":")+1);cl.ok=cl.ok||{};cl.ok[id]=firma(cl,t);
+  if(b.dataset.okal){const id=b.dataset.okal;const [ty,t]=id.split(":");cl.ok=cl.ok||{};cl.ok[id]=firma(cl,t,ty);
     refrescarLigero();changed();toast("Aviso confirmado.",{txt:"Deshacer",fn:deshacer});return}
   if(b.hasAttribute("data-okreset")){cl.ok={};refrescarLigero();changed();return}
   if(b.dataset.fixsm){const t=b.dataset.fixsm;let F=q(cl,t,"F"),E=q(cl,t,"E"),SM=q(cl,t,"SM");const n=Math.min(F,E);
-    setQ(cl,t,"SM",SM+n||"");setQ(cl,t,"F",F-n||"");setQ(cl,t,"E",E-n||"");
-    renderEditor();refrescarLigero();renderResumen();renderProduccion();changed();toast(`${n} franelilla${n>1?"s":""} en talla ${t}.`,{txt:"Deshacer",fn:deshacer});return}
+    if(cantidadesIncorrectas([cl])){toast(MENSAJE_CANTIDADES);return}
+    cerrarGrupo();
+    if(!aplicarCantidades(cl,[[t,"SM",SM+n],[t,"F",F-n],[t,"E",E-n]]))return;
+    renderEditor();refrescarLigero();changed();toast(`${n} franelilla${n>1?"s":""} en talla ${t}.`,{txt:"Deshacer",fn:deshacer});return}
   if(b.dataset.fix){const t=b.dataset.fix;const k=cl.modoManga==="par"?1:2;
+    if(cantidadesIncorrectas([cl])){toast(MENSAJE_CANTIDADES);return}
+    cerrarGrupo();
     let F=q(cl,t,"F"),E=q(cl,t,"E"),MC=q(cl,t,"MC"),ML=q(cl,t,"ML"),C=q(cl,t,"C"),L=q(cl,t,"L");
     let n=Math.min(F,E,Math.floor(MC/k));C+=n;F-=n;E-=n;MC-=n*k;
     let m2=Math.min(F,E,Math.floor(ML/k));L+=m2;F-=m2;E-=m2;ML-=m2*k;
-    [["C",C],["L",L],["F",F],["E",E],["MC",MC],["ML",ML]].forEach(([kk,v])=>setQ(cl,t,kk,v||""));
-    renderEditor();refrescarLigero();renderResumen();renderProduccion();changed();}
+    const cambios=[["C",C],["L",L],["F",F],["E",E],["MC",MC],["ML",ML]].map(([tipo,v])=>[t,tipo,v]);
+    if(!aplicarCantidades(cl,cambios))return;
+    renderEditor();refrescarLigero();changed();}
 });
 /* Reduce la imagen a 2000 px como máximo y la guarda en WebP (calidad 88 %), que conserva transparencias.
    Si el navegador no sabe hacer WebP usa JPEG. Solo se usa la versión nueva si pesa menos que la original. */
@@ -1481,45 +1671,54 @@ async function guardarImagen(f,aviso){
   if(assets){const opt=await optimizar(f);aviso&&aviso("Subiendo imagen…");
     try{const r=await assets.upload(opt.blob);toast(opt.blob!==f?`Imagen subida y optimizada: ${kb(f.size)} → ${kb(opt.blob.size)}.`:"Imagen subida.");return {id:r.id,url:r.url,nombre:f.name}}catch(err){}}
   aviso&&aviso("Guardando imagen…");
-  if(!db){try{const opt=await optimizar(f);const d=await blobAData(opt.blob);const id="i"+uid()+uid();await idbPut(id,d);IMG["L:"+id]=d;toast("Imagen guardada en esta computadora.");return {lid:id,nombre:f.name}}
-    catch(err){toast("No se pudo guardar la imagen en esta computadora.");return null}}
+  if(!db){try{const opt=await optimizar(f);const d=await blobAData(opt.blob);
+      await verificarImagenResp(d,"el archivo seleccionado");
+      const id="i"+uid()+uid();await idbPut(id,d);IMG["L:"+id]=d;toast("Imagen guardada en esta computadora.");return {lid:id,nombre:f.name}}
+    catch(err){toast(err instanceof ErrorRespaldo?err.message:"No se pudo guardar la imagen en esta computadora.");return null}}
   try{const d=await comprimirDataURL(f);if(!d){toast("La imagen es demasiado grande. Prueba con una más pequeña.");return null}
     const id="i"+uid()+uid();await db.collection("imagenes").doc(id).set({data:d,nombre:f.name});IMG[id]=d;toast("Imagen subida.");return {dbid:id,nombre:f.name}}
   catch(err){toast(err&&err.code==="quota_exceeded"?"Se llenó el espacio de imágenes. Quita diseños que ya no uses.":"No se pudo guardar la imagen. Intenta de nuevo.");return null}
 }
 $("fileImg").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value="";const id=imgDestino||sel;imgDestino=null;if(!f||!id)return;
+  const cliente=S.clientes.find(c=>c.id===id);
   const box=document.querySelector(`.imgbox[data-cli="${id}"]`)||(id===sel?$("imgbox"):null);
   const img=await subirImagen(f,t=>{if(box)box.innerHTML=`<span>${t}</span>`});
-  if(img)await ponerImgCliente(id,img);else{renderEditor();renderProduccion()}
+  if(img&&S.clientes.includes(cliente))await ponerImgCliente(id,img);else{renderEditor();renderProduccion()}
 });
-/* pone (o quita, con null) la imagen de un cliente en todos lados: pedidos, producción y los lotes del historial que lo contienen */
-/* foto del historial: la elegida en el historial (imgProd) o, si no hay, la del pedido */
 function fotoProd(c){if(!c)return null;if(c.imgProd)return c.imgProd.none?null:c.imgProd;return c.img||null}
-/* soloProd: el cambio viene del historial y solo afecta la imagen del historial */
 async function ponerImgCliente(id,img,loteOrigen){
-  const soloProd=!!loteOrigen,aislado=id.startsWith("cr-");
-  const poner=c=>{if(soloProd)c.imgProd=img?JSON.parse(JSON.stringify(img)):{none:true};else{c.img=img?JSON.parse(JSON.stringify(img)):null;delete c.imgProd}};
-  const cl=S.clientes.find(c=>c.id===id);
-  if(cl&&(!aislado||!loteOrigen||loteOrigen===S.loteActivo)){poner(cl);changed()}
-  for(const l of LOTES){
-    if(aislado&&l.id!==(loteOrigen||S.loteActivo))continue;
-    if(!(l.clientes||[]).some(c=>c.id===id))continue;
-    marcarCambioLote(l.id,`imagen:${id}`,copia=>{
+  if(loteOrigen){
+    marcarCambioLote(loteOrigen,`imagen:${id}`,copia=>{
       const cliente=(copia.clientes||[]).find(c=>c.id===id);if(!cliente)return;
-      poner(cliente);delete copia.portada;delete copia.sinPortada;
+      cliente.imgProd=img?structuredClone(img):{none:true};
+      delete copia.portada;delete copia.sinPortada;
     });
+    return guardarCambiosLotes();
   }
+  const cl=S.clientes.find(c=>c.id===id);
+  if(!cl)return false;
+  cerrarGrupo();
+  cl.img=img?structuredClone(img):null;
+  delete cl.imgProd;
+  if(!img&&S.portadaCli===id)S.portadaCli=null;
+  changed();
   renderEditor();renderProduccion();
   return guardarCambiosLotes();
 }
-/* cliente que representa la imagen de un lote: el primero con imagen o, si ninguno tiene, el primero */
-function clientePortada(l){const cs=l.clientes||[];return cs.find(c=>c.id===l.portadaCli&&tieneImg(fotoProd(c)))||cs.find(c=>tieneImg(fotoProd(c)))||cs[0]||null}
+function portadaLote(l){
+  const cs=l.clientes||[];
+  const elegido=cs.find(c=>c.id===l.portadaCli&&tieneImg(fotoProd(c)));
+  if(elegido)return {cliente:elegido,imagen:fotoProd(elegido)};
+  if(tieneImg(l.portada)&&!l.sinPortada)return {cliente:null,imagen:l.portada};
+  const primero=cs.find(c=>tieneImg(fotoProd(c)));
+  return {cliente:primero,imagen:fotoProd(primero)};
+}
+function clientePortada(l){return portadaLote(l).cliente||l.clientes?.[0]||null}
 /* elegir la imagen de un cliente como portada del lote en curso */
-async function usarPortada(id){S.portadaCli=id;changed();renderProduccion();
+async function usarPortada(id){if(S.portadaCli===id)return;cerrarGrupo();S.portadaCli=id;changed();renderProduccion();
   const l=S.loteActivo&&LOTES.find(x=>x.id===S.loteActivo);const cl=S.clientes.find(c=>c.id===id);
   if(l){
-    marcarCambioLote(l.id,"portada",copia=>{copia.portadaCli=id;delete copia.portada;delete copia.sinPortada});
     if(await guardarCambiosLotes())toast(`Portada de “${l.nombre}”: ${cl?cl.nombre:""}.`);
   }
   else toast("Será la portada del lote cuando lo guardes.")}
@@ -1536,9 +1735,9 @@ document.addEventListener("drop",async e=>{if(!traeArchivo(e))return;e.preventDe
   const f=[...e.dataTransfer.files].find(x=>/^image\//.test(x.type));if(!f){toast("Suelta un archivo de imagen (JPG, PNG, WEBP).");return}
   let id=z.dataset.cli||(z.id==="imgbox"?sel:null);
   if(z.dataset.lote){const l=LOTES.find(x=>x.id===z.dataset.lote);const c=l&&clientePortada(l);if(!c){toast("Este lote no tiene clientes.");return}id=c.id}
-  if(!id)return;z.classList.add("cargando");
+  if(!id)return;const cliente=S.clientes.find(c=>c.id===id);z.classList.add("cargando");
   const img=await subirImagen(f,z.dataset.lote?null:t=>{z.innerHTML=`<span>${t}</span>`});z.classList.remove("cargando");
-  if(img)await ponerImgCliente(id,img,z.dataset.lote);else{renderEditor();renderProduccion()}});
+  if(img&&(z.dataset.lote||S.clientes.includes(cliente)))await ponerImgCliente(id,img,z.dataset.lote);else{renderEditor();renderProduccion()}});
 
 /* portada de un lote: cambiarla o quitarla */
 let portadaDe=null;
@@ -1549,16 +1748,16 @@ $("fileLote").addEventListener("change",async e=>{const f=e.target.files&&e.targ
 $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("[data-pcam],[data-pdel]");if(!b)return;
   if(b.dataset.pcam){portadaDe=b.dataset.pcam;$("fileLote").click();return}
   const l=LOTES.find(x=>x.id===b.dataset.pdel);if(!l)return;
-  if(tieneImg(l.portada)&&!l.sinPortada){
+  const {cliente,imagen}=portadaLote(l);
+  if(imagen&&!cliente){
     marcarCambioLote(l.id,"portada",copia=>{copia.portada=null});
     if(await guardarCambiosLotes())toast("Imagen quitada.");
     return;
   }
-  const c=clientePortada(l);if(!c||!tieneImg(fotoProd(c)))return;
-  if(await ponerImgCliente(c.id,null,l.id))toast(`Imagen de ${c.nombre} quitada.`)});
+  if(cliente&&await ponerImgCliente(cliente.id,null,l.id))toast(`Imagen de ${cliente.nombre} quitada.`)});
 $("v-produccion").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.ps){const id=b.dataset.ps;prodSel.has(id)?prodSel.delete(id):prodSel.add(id);renderProduccion();return}
-  if(b.id==="psTodos"){const {con}=prodClientes();prodSel=new Set(con.map(c=>c.id));renderProduccion();return}
+  if(b.id==="psTodos"){prodSel=null;renderProduccion();return}
   if(b.id==="psNinguno"){prodSel=new Set();renderProduccion();return}
   if(b.dataset.cport){usarPortada(b.dataset.cport);return}
   if(b.dataset.ccam){imgDestino=b.dataset.ccam;$("fileImg").click();return}
@@ -1570,21 +1769,36 @@ $("v-historial").addEventListener("click",async e=>{const b=e.target.closest("bu
   if(b.dataset.la){loteConfirm={id:b.dataset.id,a:b.dataset.la};renderHistorial();return}
   if(b.hasAttribute("data-lx")){loteConfirm=null;renderHistorial();return}
   if(b.dataset.lc){const l=LOTES.find(x=>x.id===b.dataset.lc);if(!l)return;
-    S.clientes=JSON.parse(JSON.stringify(l.clientes||[])).map(normCli);S.ajustes=normAj(l.ajustes);S.loteActivo=l.id;S.portadaCli=l.portadaCli||null;sel=S.clientes[0]&&S.clientes[0].id;prodSel=null;loteConfirm=null;
-    renderTodo();changed();toast(`“${l.nombre}” cargado en Pedidos.`);location.hash="pedidos";return}
+    cerrarGrupo();
+    const {clientes,ajustes}=leerLote(l);
+    S.clientes=clientes;S.ajustes=ajustes;S.loteActivo=null;S.portadaCli=l.portadaCli||null;sel=S.clientes[0]?.id;prodSel=tallasFijas=loteConfirm=null;
+    changed();renderTodo();toast(`“${l.nombre}” cargado como copia para editar.`);location.hash="pedidos";return}
   if(b.dataset.ld){const id=b.dataset.ld;b.disabled=true;
     try{
       await escribirLote(id,()=>null);
       if(loteConfirm&&loteConfirm.id===id)loteConfirm=null;
       cambiosLotes.delete(id);if(!cambiosLotes.size)errorLotes=false;
+      if(S.loteActivo===id){S.loteActivo=null;cerrarGrupo();base=foto();persistir()}
       renderHistorial();pintarLote();pintarGuardado();vigilarSalida();toast("Lote eliminado.");
     }catch(err){b.disabled=false;toast("No se pudo eliminar el lote. Intenta de nuevo.")}}
 });
-$("v-resumen").addEventListener("change",e=>{if(e.target.id==="pzShort"){const v=Math.max(1,Math.round(val(e.target.value))||2);S.ajustes.piezasShort=v;renderTodo();changed()}});
+$("v-resumen").addEventListener("change",e=>{
+  const campo=e.target;if(campo.id!=="pzShort")return;
+  const v=leerCantidad(campo.value);
+  const aj={...S.ajustes,piezasShort:v};
+  if(!cantidadValida(v)||!v||!cantidadValida(totales(S.clientes,aj).total)){
+    campo.value=S.ajustes.piezasShort;
+    toast("Indica un número entero de piezas por short, desde 1 y dentro del límite de cálculo.");
+    return;
+  }
+  if(v===S.ajustes.piezasShort)return;
+  cerrarGrupo();S.ajustes=aj;renderTodo();changed();
+});
 $("v-resumen").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.id==="resReset"){S.ajustes.ordenResumen=null;renderResumen();changed();return}
   if(b.id==="copiar"){const ta=$("csvTxt");navigator.clipboard.writeText(ta.value).then(()=>b.textContent="Copiado").catch(()=>{ta.focus();ta.select()});return}
   if(b.id!=="exportar")return;
+  if(cantidadesIncorrectas(S.clientes)){toast(MENSAJE_CANTIDADES);return}
   const filas=[["Cliente","Fecha de pedido","Fecha de entrega","Talla","Franela","Suéter","Frente y espalda","Franelilla","Solo frente","Solo espalda","Mangas cortas (unid.)","Mangas largas (unid.)","Mangas chemis (unid.)","Shorts","Piezas de short sueltas","Frentes","Espaldas","Piezas manga corta","Piezas manga larga","Piezas manga chemis","Piezas short","Total piezas"]];
   S.clientes.forEach(cl=>TALLAS.forEach(t=>{const p=piezas(cl,t);const tot=p.fr+p.es+p.mc+p.ml+p.mq+p.sh;if(tot)filas.push([cl.nombre,cl.pedido?fecha(cl.pedido):"",cl.entrega?fecha(cl.entrega):"",t,p.C,p.L,p.FE,p.SM,p.F,p.E,p.mcU,p.mlU,p.mqU,p.SH,p.SHp,p.fr,p.es,p.mc,p.ml,p.mq,p.sh,tot])}));
   const csv="﻿"+filas.map(r=>r.map(x=>{let s=String(x??"");
@@ -1649,8 +1863,9 @@ $("v-resumen").addEventListener("pointerup",rSoltar);$("v-resumen").addEventList
 let rel=null;
 $("editor").addEventListener("mousedown",e=>{if(e.target.classList&&e.target.classList.contains("fill"))e.preventDefault()});
 $("editor").addEventListener("pointerdown",e=>{const f=e.target.closest(".fill");if(!f||e.button>0)return;e.preventDefault();e.stopPropagation();
-  const td=f.closest("td");const inp=td.querySelector("input");
-  rel={pid:e.pointerId,td,k:td.dataset.k,t:td.parentElement.dataset.t,v:inp.value.trim(),celdas:[]};try{f.setPointerCapture(e.pointerId)}catch(_){}
+  const td=f.closest("td"), cl=S.clientes.find(c=>c.id===sel);
+  const talla=td.parentElement.dataset.t, tipo=td.dataset.k;
+  rel={pid:e.pointerId,td,cl,v:cl?.q[talla]?.[tipo]??0,celdas:[]};try{f.setPointerCapture(e.pointerId)}catch(_){}
   document.body.classList.add("rellenando")});
 $("editor").addEventListener("pointermove",e=>{if(!rel||e.pointerId!==rel.pid)return;
   const el=document.elementFromPoint(e.clientX,e.clientY);const td=el&&el.closest&&el.closest("#grid tbody td[data-k]");
@@ -1663,10 +1878,10 @@ $("editor").addEventListener("pointermove",e=>{if(!rel||e.pointerId!==rel.pid)re
   const gw=document.querySelector("#editor .gridwrap");if(gw){const g=gw.getBoundingClientRect();if(e.clientX>g.right-30)gw.scrollLeft+=12;else if(e.clientX<g.left+60)gw.scrollLeft-=12}});
 function relSoltar(e){if(!rel||e.pointerId!==rel.pid)return;const r=rel;rel=null;document.body.classList.remove("rellenando");
   document.querySelectorAll("#grid td.fillr").forEach(x=>x.classList.remove("fillr"));
-  const cl=S.clientes.find(c=>c.id===sel);if(!cl||!r.celdas.length)return;
-  const v=r.v===""?"":Number(r.v);cerrarGrupo();
-  r.celdas.forEach(td=>setQ(cl,td.parentElement.dataset.t,td.dataset.k,v));
-  renderEditor();refrescarLigero();renderResumen();renderProduccion();changed()}
+  const cl=S.clientes.find(c=>c.id===sel);if(!cl||cl!==r.cl||!r.celdas.length||e.type==="pointercancel")return;
+  cerrarGrupo();
+  if(!aplicarCantidades(cl,r.celdas.map(td=>[td.parentElement.dataset.t,td.dataset.k,r.v])))return;
+  renderEditor();refrescarLigero();changed()}
 $("editor").addEventListener("pointerup",relSoltar);$("editor").addEventListener("pointercancel",relSoltar);
 
 /* ---------- arrastrar para reordenar con animación ---------- */
@@ -1753,7 +1968,8 @@ function camposResp(obj,campos,ruta){
 }
 const textoResp=v=>typeof v==="string";
 const idResp=v=>textoResp(v)&&/^[a-zA-Z0-9_-]{1,128}$/.test(v)&&!(v in Object.prototype);
-const numeroResp=v=>Number.isFinite(v)&&Math.abs(v)<=Number.MAX_SAFE_INTEGER;
+// El respaldo también conserva valores antiguos que están pendientes de corregir.
+const numeroResp=Number.isFinite;
 const selloResp=v=>Number.isSafeInteger(v)&&v>=0;
 function fechaResp(v){
   if(!textoResp(v)||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
@@ -1770,7 +1986,7 @@ function fichaResp(d,ruta){
   opcionalResp(d,"extras",v=>listaResp(v,idResp),ruta);
 }
 const tiposResp=TIPOS.map(t=>t.k);
-const avisosResp=["imparMQ","imparMC","imparML","shortpz","fem","fe","solomangas"].flatMap(a=>TALLAS.map(t=>a+":"+t));
+const avisosResp=["imparMQ","imparMC","imparML","shortpz","fem","femq","fe","solomangas"].flatMap(a=>TALLAS.map(t=>a+":"+t));
 function ajustesResp(a,ruta){
   camposResp(a,["piezasShort","listas","detalles","orden","ordenResumen","fichaDef"],ruta);
   opcionalResp(a,"piezasShort",v=>selloResp(v)&&v>0,ruta);
@@ -2098,6 +2314,7 @@ async function escribirRespaldo(antes,despues,imagenes,vigente){
 }
 function publicarRestauracion(valores){
   cerrarGrupo();UNDO.length=0;REDO.length=0;
+  valoresLocales=valores.slice(0,2);
   S=norm(JSON.parse(valores[0]||"null"));LOTES=JSON.parse(valores[1]||"[]");
   reflejarTema(valores[2]);
   sel=S.clientes[0]?.id;prodSel=tallasFijas=confirmDel=loteConfirm=renLote=null;
@@ -2109,9 +2326,7 @@ async function restaurarRespaldo(obj){
   return navigator.locks.request(BLOQUEO_RESP,async()=>{
     exigirResp(!lecturaPedidoFallida&&!lecturaLotesFallida,"No se pueden leer los datos actuales. Corrige el problema de almacenamiento antes de importar.");
     exigirResp(!saving&&!guardandoCambiosLotes&&!subidasImagen,"Espera a que termine el guardado antes de importar.");
-    const local=leerValoresResp();
-    exigirResp((JSON.parse(local[0]||"null")?.rev||"")===S.rev&&jsonCanonico(JSON.parse(local[1]||"[]"))===jsonCanonico(LOTES),
-      "Los datos cambiaron en otra pestaña. Vuelve a abrir la aplicación antes de importar.");
+    exigirEscrituraLocal();
     await Promise.all([guardar(),guardarCambiosLotes()]);
     exigirResp(!hayCambiosPendientes()&&!saving&&!guardandoCambiosLotes&&!subidasImagen,
       "Guarda los cambios pendientes antes de restaurar el respaldo.");
@@ -2207,7 +2422,7 @@ async function guardarNombreLote(){const l=LOTES.find(x=>x.id===renLote);const i
       if(!actual)throw new Error("El lote ya no está en el historial");
       return {...actual,nombre:v};
     });
-    renLote=null;toast("Nombre del lote actualizado.");
+    renLote=null;pintarLote();toast("Nombre del lote actualizado.");
   }catch(e){toast("No se pudo cambiar el nombre. Intenta de nuevo.")}
   finally{renombrandoLote=false;renderHistorial();vigilarSalida()}
 }
@@ -2232,8 +2447,9 @@ $("modal").addEventListener("click",e=>{const tr=e.target.closest("tr[data-abrir
 
 /* ---------- detalle de un lote en una ventana ---------- */
 function verLote(id,origen){const l=LOTES.find(x=>x.id===id);if(!l)return;
-  const filas=(l.clientes||[]).map(c=>{normCli(c);const s=sumCliente(c,l.ajustes);return `<tr><th style="text-align:left;font-size:13px">${esc(c.nombre)}</th><td class="num">${c.pedido?fecha(c.pedido):"·"}</td><td class="num">${c.entrega?fecha(c.entrega):"·"}</td>${cell(s.C+s.L)}${cell(s.SM)}${cell(s.F)}${cell(s.E)}${cell(s.mcU+s.mlU+s.mqU)}${cell(s.SH)}${cell(s.total,1)}</tr>`}).join("");
-  const r=l.resumen||{};
+  const {clientes,ajustes}=leerLote(l);
+  const filas=clientes.map(c=>{const s=sumCliente(c,ajustes);return `<tr><th style="text-align:left;font-size:13px">${esc(c.nombre)}</th><td class="num">${c.pedido?fecha(c.pedido):"·"}</td><td class="num">${c.entrega?fecha(c.entrega):"·"}</td>${cell(s.C+s.L)}${cell(s.SM)}${cell(s.F)}${cell(s.E)}${cell(s.mcU+s.mlU+s.mqU)}${cell(s.SH)}${cell(s.total,1)}</tr>`}).join("");
+  const r=resumirLote(clientes,ajustes);
   $("modal").innerHTML=`<div class="card ancho" role="dialog" aria-modal="true" aria-labelledby="mt">
     <div class="toolbar"><div><h2 id="mt">${esc(l.nombre)}</h2><span class="note">${fecha(l.fecha)} · ${r.clientes||0} clientes · ${r.piezas||0} piezas</span></div><button class="btn" id="rs-no">Cerrar</button></div>
     <div class="gridwrap"><table class="rt"><thead><tr><th style="text-align:left">Cliente</th><th>Pedido</th><th>Entrega</th><th>Completas</th><th>Franelillas</th><th>Frentes</th><th>Espaldas</th><th>Mangas</th><th>Shorts</th><th>Piezas</th></tr></thead><tbody>${filas}</tbody></table></div></div>`;
@@ -2316,8 +2532,9 @@ $("modal").addEventListener("click",e=>{
     return}
   if(b.id==="rs-ok"){
     const z=$("rs-cero").getAttribute("aria-checked")==="true",d=$("rs-todo").getAttribute("aria-checked")==="true";if(!z&&!d)return;
+    cerrarGrupo();
     if(z)S.clientes.forEach(c=>c.q={});
-    if(d){S.clientes=[];sel=null;prodSel=null;S.loteActivo=null}
+    if(d){S.clientes=[];sel=null;prodSel=null;S.loteActivo=null;S.portadaCli=null}
     renderTodo();changed();$("modal").hidden=true;
     toast(d?"Clientes eliminados.":"Cantidades en cero.",{txt:"Deshacer",fn:deshacer});return}
 });
@@ -2337,7 +2554,10 @@ function reflejarTema(tema){
   else document.documentElement.removeAttribute("data-theme");
 }
 try{reflejarTema(localStorage.getItem("montajes-tema"))}catch(_){}
-$("themeBtn").addEventListener("click",()=>{const nuevo=esOscuro()?"light":"dark";document.documentElement.setAttribute("data-theme",nuevo);try{localStorage.setItem("montajes-tema",nuevo)}catch(_){}pintarBoton()});
+$("themeBtn").addEventListener("click",()=>{const nuevo=esOscuro()?"light":"dark";reflejarTema(nuevo);try{
+  if(db)localStorage.setItem("montajes-tema",nuevo);
+  else escribirLocal(2,nuevo);
+}catch(_){}pintarBoton()});
 try{mq.addEventListener("change",pintarBoton)}catch(_){}
 new MutationObserver(pintarBoton).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 pintarBoton();
