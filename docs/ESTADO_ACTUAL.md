@@ -58,8 +58,8 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 ## Distribución de 1.29.0
 
 - Instrucciones de apertura, respaldo y acceso directo para Windows en [LEEME.txt](../distribucion/LEEME.txt).
-- El HTML de la distribución preliminar coincide byte por byte con `de39965`. El archivo fuente del icono aprobado no está disponible entre los adjuntos accesibles.
-- Las 35 comprobaciones volvieron a pasar en Chromium por HTTP local. La política del navegador volvió a bloquear `file://`.
+- El PNG aprobado se conserva byte por byte. El ICO contiene tamaños de 16 a 256 píxeles y el HTML incorpora un favicon PNG de 64 × 64. Al retirar la etiqueta del favicon, el HTML coincide byte por byte con `de39965`. La procedencia del icono se registró en el PR n.º 5.
+- El [ZIP de distribución](../distribucion/Montajes-Sublimacion-v1.29.0.zip) contiene el HTML, ambos formatos de icono y las instrucciones. Se verificaron su integridad y la decodificación del favicon en Chromium por HTTP local. La validación conserva las 35 comprobaciones de la base.
 
 ## Próxima acción
-Recibir el icono aprobado para producir el PNG y el ICO, incrustar el favicon y verificar el ZIP final.
+Revisar e integrar el [PR #5 de distribución](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/5).
