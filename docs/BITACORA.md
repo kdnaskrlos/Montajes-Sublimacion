@@ -55,3 +55,5 @@
 - Se incorporaron las columnas independientes, chemis corta y larga, la talla 5XL y el icono interno aprobado. Cálculos, avisos, historial y exportaciones comparten el conteo físico.
 - Se conservaron los modos históricos y el conteo de shorts con configuraciones antiguas. Se actualizó el ZIP y la documentación de distribución.
 - Pasaron 38 comprobaciones en Chromium, con 34 piezas confirmadas para una unidad de cada categoría en 5XL. Se verificaron la migración, las exportaciones y el contenido del ZIP.
+
+- El PR #6 incorpora el icono SVG de piezas sueltas de short. Se comprobó en Pedidos, Resumen y el detalle por talla a 390 y 1440 px. Se regeneró el ZIP de 1.30.0.
