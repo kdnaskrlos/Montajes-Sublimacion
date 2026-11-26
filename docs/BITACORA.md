@@ -31,3 +31,9 @@
 - El formato 1 conserva ajustes, portadas, lote activo e imágenes. La app valida el contenido antes de importar y comprueba las escrituras antes de confirmar. La repetición de una copia no duplica lotes ni imágenes.
 - La copia previa y el diario de IndexedDB permiten recuperar el estado anterior. Los pedidos importados quedan aislados de los lotes previos. Se protege el texto importado en vistas, hojas HTML y CSV.
 - Pasaron 28 comprobaciones en Chromium con datos ficticios, incluidas las 15 de I0/I1. La importación se validó en almacenamiento local por HTTP de loopback. La política del entorno bloqueó `file://` y el servicio real de Claude quedó fuera de la prueba.
+
+## 2026-11-25 — Estabilización para uso diario (I3/I4)
+
+- Se actualizó la base a `2994984` y se unificaron I3 e I4 en `codex/estabilizacion-v1.29.0`. El HTML pasa a 1.29.0.
+- Se verificaron cantidades y conversiones exactas, alertas de mangas chemis, aislamiento de lotes y portadas, coherencia de producción y exclusión de guardado entre pestañas.
+- Pasaron las 28 comprobaciones anteriores y 7 nuevas. Chromium bloqueó `file://` por política del entorno. Las pruebas funcionales, incluidas imágenes, respaldo y PDF, se completaron por HTTP local.
