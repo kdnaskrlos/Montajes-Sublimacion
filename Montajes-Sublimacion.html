@@ -568,7 +568,7 @@ const TIPOS=[
   {k:"MQU", n:"Mangas cortas chemis",s:"unidad",   c:"--t-mchemis", ic:"mchemis"},
   {k:"MLU", n:"Mangas largas",       s:"unidad",   c:"--t-mlarga",  ic:"mlarga"},
   {k:"SHC", n:"Short",               s:"2 piezas", c:"--t-short",  ic:"short"},
-  {k:"SHP", n:"Short",               s:"pieza",    c:"--t-short",  ic:"short"}
+  {k:"SHP", n:"Short",               s:"pieza",    c:"--t-short",  ic:"shortPieza"}
 ];
 const TIPOS_PEDIDO=Object.fromEntries(TIPOS.map(t=>[t.k,t]));
 const LEGADOS={MC:"MCP",MQ:"MQP",ML:"MLP",SH:"SHC"};
@@ -613,6 +613,7 @@ const P={
   fyesp:'<path d="M8.5 3.5 5.2 5l1.6 4.8v10.7h10.4V9.8L18.8 5l-3.3-1.5c-.6 1.5-1.9 2.4-3.5 2.4s-2.9-.9-3.5-2.4Z"/>',
   mlarga:'<path d="M4.2 7.2C6.2 6.8 8.4 3.6 12 3.6s5.8 3.2 7.8 3.6l-.9 1.5c-1.3 2.4-1.6 7.2-1.8 11.6v.8H6.9v-.8c-.2-4.4-.5-9.2-1.8-11.6Z"/>',
   short:'<path d="M5 4h14l1.6 15.5h-6.4L12 10.5l-2.2 9H3.4Z"/><path d="M5.3 7h13.4"/>',
+  shortPieza:'<path d="M6.3 3.7 L19.4 5.4 C19.2 11.3 19.7 13.2 22 14.2 C21.5 16.2 21.5 18.2 21.6 20.3 H3.5 C3.6 18.1 3 16 2 14.2 C5.7 13.6 5.3 10.5 6.3 3.7 Z"/>',
   pedidos:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
   resumen:'<path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/>',
   produccion:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7.5 20 17M8 16.5 20 7"/>',
@@ -1135,7 +1136,7 @@ function tarjetasTalla(rows,pt){
     CLQ:{c:T("CH").c,ic:"fyespchemis",n:"Frente y espalda chemis",f:r=>r.CH+r.CHL},
     E:{c:T("E").c,ic:T("E").ic,n:"Solo espalda",f:r=>r.E},
     SH:{c:T("SHC").c,ic:"short",n:"Shorts",f:r=>r.SHC},
-    SHp:{c:T("SHP").c,ic:"short",n:"Piezas de short",u:"sueltas",f:r=>r.SHP},
+    SHp:{c:T("SHP").c,ic:T("SHP").ic,n:"Piezas de short",u:"sueltas",f:r=>r.SHP},
     MCp:manga("MCP","MCU","C","mc"),
     MLp:manga("MLP","MLU","L","ml"),
     MQp:manga("MQP","MQU","CH","mq"),
