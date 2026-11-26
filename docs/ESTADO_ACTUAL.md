@@ -1,5 +1,5 @@
 # Estado actual
-Fecha: 2026-11-25. Versión en `main`: 1.29.0, commit `08f031d` ([PR #5](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/5)). Versión en revisión: 1.30.0, rama `codex/v1.30.0-prendas`, iniciada en `18b34e8`.
+Fecha: 2026-11-25. Versión en `main` 1.30.0, commit `61c9387` ([PR #6](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/6)). Versión 1.31.0 en `codex/pwa-v1.31.0`.
 
 ## Base técnica de 1.29.0
 Archivo único Montajes-Sublimacion.html. La base original v1.28.3 tenía 157199 bytes y SHA-256 `0055a2865226253d77ce6cdb6c4aa179ad73b32eaf8e2f1abc1b3e7d653035a5`. Git blob original `08e8e63def45fb35c48a550a91507df3c8015634`. Commit de importación `c59dae4b355842d38e9dd1cafeb2f4a31a5f45d0`.
@@ -68,6 +68,21 @@ I6: mejoras funcionales según necesidades reales del usuario (medio). Evaluar I
 - Pasaron las 38 comprobaciones con datos ficticios en Chromium 156 mediante `node tests/i0.mjs --no-sandbox`. Se verificaron las 16 categorías por separado y las 34 piezas al combinarlas en 5XL, incluida la restauración del respaldo, el CSV, la hoja y el PDF generado. Se revisó el desplazamiento de las tablas en escritorio y móvil. Chromium bloqueó `file://` por su política y el flujo se probó por HTTP de loopback. La llamada al diálogo de impresión y el adaptador de Claude se simularon. Quedaron pendientes la impresora física y el servicio real de Claude.
 - El [ZIP de 1.30.0](../distribucion/Montajes-Sublimacion-v1.30.0.zip) incluye el HTML de la rama, el PNG e ICO de distribución y las instrucciones. Se comprobó la integridad del ZIP y la coincidencia de sus entradas con los archivos fuente.
 
+## Versión 1.31.0 para GitHub Pages
+
+- `Montajes-Sublimacion.html` sigue siendo el archivo autónomo y el origen de la compilación. `scripts/build-pages.mjs` genera `dist/` con la PWA y una copia descargable del HTML. El manifest usa `/Montajes-Sublimacion/`, el plotter aprobado en PNG de 192 y 512 px, una variante enmascarable y un icono de 180 px para Apple. Pages sirve Plus Jakarta Sans desde su propia ruta.
+- El service worker precarga únicamente los archivos de la aplicación y comprueba que el HTML corresponde a su compilación. Cada versión de caché se identifica por la compilación y el ámbito del service worker. Al aceptar una actualización, se verifica el guardado antes de recargar. Las demás pestañas conservan su sesión y muestran el aviso.
+- Pages usa el prefijo `Montajes-Sublimacion:` en localStorage, IndexedDB y Web Locks. El HTML descargado conserva sus identificadores originales. La migración entre orígenes se hace con **Exportar respaldo** e **Importar respaldo**, en formato 1. La aplicación y el flujo de publicación carecen de un servidor de datos. El prefijo evita colisiones accidentales en el mismo origen, donde el navegador comparte permisos entre aplicaciones.
+- GitHub Actions valida los PR y `main`, y prepara el despliegue desde `main`. Pages estaba deshabilitado durante la auditoría. El flujo público y la instalación en dispositivos físicos quedan pendientes.
+- Pasaron las 38 comprobaciones existentes y seis nuevas en Chromium 156 con `node tests/i0.mjs --no-sandbox`. Se verificaron el manifest, el arranque sin red, la descarga, la migración por respaldo y el guardado entre versiones. Chromium bloqueó `file://` por política del entorno y se probó el archivo descargable por HTTP local. El aviso de instalación se simuló. `actionlint` validó el workflow y dos compilaciones produjeron archivos idénticos.
+
+## Auditoría de publicación de 1.31.0
+
+- Se revisaron 22 commits y 51 blobs de las siete ramas remotas, las seis referencias de PR, los archivos comprimidos, las imágenes incrustadas y las conversaciones y revisiones de los seis PR existentes. En GitHub no había issues independientes, versiones publicadas ni ejecuciones de Actions. Wiki y Discussions estaban deshabilitados.
+- Gitleaks 8.24.3 no detectó credenciales en el historial analizado. El inventario y la inspección visual encontraron sólo variantes del icono del plotter, además de las referencias ficticias usadas por las pruebas. Los ZIP contienen HTML, iconos e instrucciones de distribución. No se encontraron respaldos JSON ni imágenes de clientes en los archivos analizados.
+- Los 22 commits incluyen en sus metadatos al menos uno de dos correos personales. El PNG original y sus copias en los ZIP contienen metadatos XMP con autor y fecha. Los PNG nuevos de la PWA se generaron sin esos metadatos. El comentario del PR #5 identifica un adjunto como icono de Montajes. El adjunto de GitHub no se pudo descargar de forma independiente durante esta revisión.
+- Desaconsejamos hacer público este repositorio en su estado actual. Una publicación requiere tratar también los metadatos históricos, los ZIP antiguos y el adjunto, o usar una copia pública limpia con sólo los archivos de distribución revisados. El repositorio sigue privado.
+
 ## Próxima acción
 
-Revisar el [PR #6 de 1.30.0](https://github.com/kdnaskrlos/Montajes-Sublimacion/pull/6), con implementación en `9c79a50`. La fusión requiere autorización del propietario.
+Revisar el PR de `codex/pwa-v1.31.0` y decidir cómo publicar una copia sin los datos personales detectados.

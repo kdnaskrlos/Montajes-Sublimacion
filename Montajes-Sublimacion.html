@@ -504,13 +504,14 @@ tbody tr:hover td{background:var(--surface-2)}
     <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
     <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z" fill="currentColor"/></svg>
   </button>
-  <span class="ver" title="Versión del programa">v1.30.0</span>
+  <span class="ver" title="Versión del programa">v1.31.0</span>
 </nav>
 
 <div class="shell">
   <div class="topbar">
     <span class="pill st" id="save" role="status"><i></i><span>Cargando…</span></span>
     <button class="btn sm" id="reintentarGuardar" type="button" hidden>Reintentar guardado</button>
+    <!-- controles-pwa -->
     <button class="pill lotepill" id="lotePill" type="button" hidden></button>
     <span class="pill fecha" id="fecha"></span>
     <span class="sp"></span>
@@ -551,6 +552,9 @@ tbody tr:hover td{background:var(--surface-2)}
 
 <script>
 (function(){
+const ES_PWA=Boolean(document.querySelector('meta[name="montajes-pwa"]'));
+const EN_PAGES=ES_PWA||(/^https?:$/.test(location.protocol)&&location.pathname.startsWith("/Montajes-Sublimacion/"));
+const claveLocal=clave=>EN_PAGES?`Montajes-Sublimacion:${clave}`:clave;
 const TALLAS=["2","4","6","8","10","12","14","16","XS","S","M","L","XL","2XL","3XL","4XL","5XL"];
 const TIPOS=[
   {k:"C",   n:"Franela",             s:"4 piezas", c:"--t-corta",   ic:"corta"},
@@ -804,7 +808,7 @@ function nivel(a){return a.some(x=>x.lv==="err")?"err":a.length?"warn":"ok"}
 /* ---------- guardado ---------- */
 let db=null, ref=null, saveTimer=null, saving=false, escrituraPedido=null, lastRev="", dirty=false, versionPedido=0;
 let errorPedido="", errorLotes=false, lecturaPedidoFallida=false, lecturaLotesFallida=false;
-const BLOQUEO_EDICION="montajes:edicion";
+const BLOQUEO_EDICION=claveLocal("montajes:edicion");
 const MENSAJE_PESTANA="Otra pestaña tiene el guardado. Ciérrala para guardar desde aquí.";
 const MENSAJE_CONFLICTO="Otra pestaña cambió los datos. Exporta tus cambios desde Historial antes de recargar.";
 let escrituraLocal=false, conflictoLocal=false, valoresLocales=[], cederEscrituraLocal=null;
@@ -965,7 +969,7 @@ async function iniciar(){
       setSave("bad",mensaje);toast(mensaje);
       return;
     }
-    try{reflejarTema(localStorage.getItem("montajes-tema"))}catch(e){}
+    try{reflejarTema(localStorage.getItem(CLAVES_RESP[2]))}catch(e){}
     let d=null;
     try{
       valoresLocales[0]=localStorage.getItem(CLAVES_RESP[0]);
@@ -1646,7 +1650,7 @@ function imgTag(i,alt,extra){if(i.url)return `<img src="${esc(i.url)}" alt="${al
   const k=claveImg(i);const src=IMG[k];if(src===undefined)setTimeout(()=>cargarImg(k),0);
   return `<img data-imgid="${k}"${src?` src="${esc(src)}"`:""} alt="${alt}" ${extra||""}>`}
 async function srcDe(i){if(!tieneImg(i))return null;if(i.url)return await aDataURL(i.url);return (await cargarImg(claveImg(i)))||null}
-function idb(){return new Promise((res,rej)=>{const r=indexedDB.open("montajes-img",1);r.onupgradeneeded=()=>r.result.createObjectStore("img");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open(claveLocal("montajes-img"),1);r.onupgradeneeded=()=>r.result.createObjectStore("img");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function transaccionImg(modo,operar){
   const d=await idb();
   try{
@@ -1989,8 +1993,8 @@ window.addEventListener("resize",()=>cerrarDP());
 
 /* ---------- respaldos y recuperación ---------- */
 const APP_RESP="Montajes Sublimación";
-const CLAVES_RESP=["montajes-sub","montajes-lotes","montajes-tema"];
-const DIARIO_RESP="respaldo:pendiente", COPIA_RESP="respaldo:anterior", BLOQUEO_RESP="montajes:restauracion";
+const CLAVES_RESP=["montajes-sub","montajes-lotes","montajes-tema"].map(claveLocal);
+const DIARIO_RESP="respaldo:pendiente", COPIA_RESP="respaldo:anterior", BLOQUEO_RESP=claveLocal("montajes:restauracion");
 let respPend=null,respaldoEnCurso=false,hayRecuperacion=false,leyendoRespaldo=false,respaldoEscribiendo=false,recuperacionPendiente=false;
 class ErrorRespaldo extends Error{}
 function exigirResp(condicion,mensaje){if(!condicion)throw new ErrorRespaldo(mensaje)}
@@ -2187,7 +2191,7 @@ async function exportarRespaldo(btn){
   const previo=btn.innerHTML;btn.disabled=true;btn.textContent="Preparando…";
   try{
     const lotes=LOTES.map(l=>cambiosLotes.has(l.id)?aplicarCambiosLote(l,cambiosLotes.get(l.id)):l);
-    const obj=await empaquetarRespaldo(structuredClone(S),structuredClone(lotes),localStorage.getItem("montajes-tema"));
+    const obj=await empaquetarRespaldo(structuredClone(S),structuredClone(lotes),localStorage.getItem(CLAVES_RESP[2]));
     await validarRespaldo(obj);
     const r=await guardarArchivo(`respaldo-montajes-${hoyISO()}.json`,new Blob([JSON.stringify(obj)],{type:"application/json"}));
     if(r==="ok")toast("Respaldo verificado. Descarga iniciada.");
@@ -2266,7 +2270,7 @@ async function prepararImportacion(obj){
   return {pedido:{...norm(aislarClientes(datos)),loteActivo:activo,rev:uid()},historial,imagenes};
 }
 
-const MARCA_RESP="montajes-restauracion";
+const MARCA_RESP=claveLocal("montajes-restauracion");
 function leerValoresResp(){return CLAVES_RESP.map(k=>localStorage.getItem(k))}
 function escribirValorResp(i,valor){
   if(valor===null)localStorage.removeItem(CLAVES_RESP[i]);
@@ -2587,15 +2591,107 @@ function reflejarTema(tema){
   if(tema==="dark"||tema==="light")document.documentElement.setAttribute("data-theme",tema);
   else document.documentElement.removeAttribute("data-theme");
 }
-try{reflejarTema(localStorage.getItem("montajes-tema"))}catch(_){}
+try{reflejarTema(localStorage.getItem(CLAVES_RESP[2]))}catch(_){}
 $("themeBtn").addEventListener("click",()=>{const nuevo=esOscuro()?"light":"dark";reflejarTema(nuevo);try{
-  if(db)localStorage.setItem("montajes-tema",nuevo);
+  if(db)localStorage.setItem(CLAVES_RESP[2],nuevo);
   else escribirLocal(2,nuevo);
 }catch(_){}pintarBoton()});
 try{mq.addEventListener("change",pintarBoton)}catch(_){}
 new MutationObserver(pintarBoton).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 pintarBoton();
 
+/* ---------- instalación y actualización en Pages ---------- */
+function iniciarPwa(){
+  const instalar=$("pwaInstalar"), actualizar=$("pwaActualizar"), aviso=$("pwaAviso");
+  let instalacion=null;
+  window.addEventListener("beforeinstallprompt",e=>{
+    e.preventDefault();instalacion=e;instalar.hidden=false;
+  });
+  instalar.addEventListener("click",async()=>{
+    const evento=instalacion;instalacion=null;instalar.hidden=true;
+    if(evento)try{await evento.prompt()}catch(e){toast("Usa el menú del navegador para instalar la aplicación.")}
+  });
+  window.addEventListener("appinstalled",()=>{instalacion=null;instalar.hidden=true});
+  $("pwaDescargar").addEventListener("click",async e=>{
+    if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+    e.preventDefault();
+    const {href,download}=e.currentTarget;
+    try{
+      const archivo=await fetch(href);
+      if(!archivo.ok||await guardarArchivo(download,await archivo.blob())!=="ok")throw new Error();
+    }catch(e){toast("No se pudo descargar el HTML. Vuelve a intentar cuando tengas conexión.")}
+  });
+
+  const workers=navigator.serviceWorker;
+  if(!workers)return;
+  const url=new URL("./sw.js",location.href).href;
+  const controladorPropio=()=>workers.controller?.scriptURL===url?workers.controller:null;
+  let controlador=controladorPropio(),registro,versionActivada=false,solicitud=0;
+  function avisar(mensaje){aviso.textContent=mensaje;aviso.hidden=false;actualizar.hidden=false}
+  function revisarEspera(){
+    if(registro.waiting)avisar("Actualización disponible.");
+    const instalando=registro.installing;
+    instalando?.addEventListener("statechange",()=>{
+      if(registro.waiting)avisar("Actualización disponible.");
+      if(instalando.state==="redundant"&&!registro.active)toast("No se pudo preparar la aplicación para usarla sin conexión.");
+    });
+  }
+  function operacionEnCurso(){
+    return !loaded||saving||guardandoCambiosLotes||escriturasLote.size||creandoLote||renombrandoLote||
+      subidasImagen||leyendoRespaldo||respaldoEnCurso||$("resExp")?.disabled;
+  }
+  function formularioPendiente(){
+    return $("newName").value.trim()||!$("loteForm").hidden||!$("modal").hidden;
+  }
+  function puedeRecargar(){
+    if(operacionEnCurso()){avisar("Espera a que termine la operación antes de actualizar.");return false}
+    if(formularioPendiente()){avisar("Completa o cierra el formulario antes de actualizar.");return false}
+    if(hayCambiosPendientes()){
+      avisar("Hay cambios sin guardar. Reintenta el guardado o exporta un respaldo desde Historial.");
+      return false;
+    }
+    return true;
+  }
+  workers.addEventListener("controllerchange",()=>{
+    const siguiente=controladorPropio();
+    if(!siguiente||siguiente===controlador)return;
+    if(controlador||solicitud){
+      versionActivada=true;
+      avisar("Actualización disponible.");
+      if(solicitud){
+        clearTimeout(solicitud);solicitud=0;actualizar.disabled=false;
+        if(puedeRecargar())location.reload();
+      }
+    }
+    controlador=siguiente;
+  });
+  actualizar.addEventListener("click",async()=>{
+    if(operacionEnCurso()||formularioPendiente()){puedeRecargar();return}
+    actualizar.disabled=true;
+    try{
+      await guardar();
+      await guardarCambiosLotes();
+      if(!puedeRecargar())return;
+      if(registro?.waiting){
+        solicitud=setTimeout(()=>{
+          solicitud=0;actualizar.disabled=false;
+          avisar("La actualización sigue pendiente. Vuelve a intentar.");
+        },10000);
+        registro.waiting.postMessage("ACTIVAR_MONTAJES");
+      }else if(versionActivada)location.reload();
+      else avisar("La actualización sigue pendiente. Vuelve a intentar.");
+    }finally{if(!solicitud)actualizar.disabled=false}
+  });
+  workers.register(url,{scope:"./",updateViaCache:"none"}).then(r=>{
+    registro=r;revisarEspera();
+    registro.addEventListener("updatefound",revisarEspera);
+    const buscar=()=>{if(!document.hidden)registro.update().catch(()=>{})};
+    document.addEventListener("visibilitychange",buscar);
+    window.addEventListener("online",buscar);
+  }).catch(()=>toast("No se pudo preparar la aplicación para usarla sin conexión."));
+}
+
+if(ES_PWA)iniciarPwa();
 renderHeader();vista();renderTodo();iniciar();
 })();
 </script>
